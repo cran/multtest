@@ -33,6 +33,8 @@ setMethod("plot","MTP",
                   stop("Use only with 'MTP' objects")
               if(is.null(which))
                   which<-1:6
+	      if(length(caption)==1)
+		  caption<-rep(caption,6)
               if(length(x@adjp)==0 & any(which))
                   stop("plot methods require adjusted p-values")
               if(length(x@conf.reg)==0 & any(which==5))
@@ -43,7 +45,7 @@ setMethod("plot","MTP",
                   stop("which must be in 1:6")
               show<-rep(FALSE,6)
               show[which]<-TRUE
-  			m<-length(x@adjp)
+	      m<-length(x@adjp)
               if(top>m){
                   warning("number of top hypotheses to plot exceeds total number of hypotheses - plotting less than requested number")
 		  top<-m
@@ -100,7 +102,7 @@ setMethod("plot","MTP",
                   if(call.list$test=="f" | call.list$test=="f.block")
                       stop("Plot 5 requires confidence intervals, which are not available with F tests")
                   topp<-ord[1:top]
-                  plot(c(1,top),range(c(x@estimate[topp],x@conf.reg[topp,,]),finite=TRUE,na.rm=TRUE),type="n",main=paste("Top",top,"Hypotheses",sep=" "),xlab="Hypotheses",ylab="Estimates")
+                  plot(c(1,top),range(c(x@estimate[topp],x@conf.reg[topp,,]),finite=TRUE,na.rm=TRUE),type="n",xlab="Most Significant Hypotheses",ylab="Estimates")
                   points(1:top,x@estimate[topp],pch="o")
                   nominal<-eval(call.list$alpha)
                   if(is.null(nominal))
@@ -119,7 +121,7 @@ setMethod("plot","MTP",
 		  if(is.null(alt))
    			alt<-"two.sided"
 		  stats<-switch(alt,two.sided=abs(x@statistic),greater=x@statistic,less=(-x@statistic))
-                  plot(c(1,top),range(c(x@cutoff[topp,],stats[topp]),finite=TRUE,na.rm=TRUE),type="n",main=paste("Top",top,"Hypotheses",sep=" "),xlab="Hypotheses",ylab="Test Statistics")
+                  plot(c(1,top),range(c(x@cutoff[topp,],stats[topp]),finite=TRUE,na.rm=TRUE),type="n",xlab="Most Significant Hypotheses",ylab="Test Statistics")
                   points(1:top,stats[topp],pch="o")
                   nominal<-eval(call.list$alpha)
                   if(is.null(nominal))

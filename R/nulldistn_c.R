@@ -34,6 +34,7 @@ boot.resample<-function(X,stat.closure,W=NULL,B=1000,theta0=0,tau0=1){
            as.integer(samp),
            body(stat.closure),
            environment(stat.closure),
+	   NAOK=TRUE,	
            PACKAGE="multtest"
            )$muboot
 	cat("\n")

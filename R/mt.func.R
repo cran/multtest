@@ -12,6 +12,7 @@
 #classlabel is a vector
 mt.teststat<-function(X,classlabel,test="t",na=.mt.naNUM,nonpara="n")
 {
+    if(is.factor(classlabel)) classlabel<-unclass(classlabel)-1
     extra<-max(classlabel)+1
     mt.checkothers(na=na,nonpara=nonpara)
     tmp<-mt.transformX(X,classlabel,test,na,nonpara)
@@ -40,6 +41,7 @@ mt.teststat.num.denum<-function(X,classlabel,test="t",na=.mt.naNUM,nonpara="n")
   mt.maxT<-function(X,classlabel,test="t",side="abs",
                   fixed.seed.sampling="y",B=10000,na=.mt.naNUM,nonpara="n")
 {
+    if(is.factor(classlabel)) classlabel<-unclass(classlabel)-1
     extra<-max(classlabel)+1
     mt.checkothers(side=side,fixed.seed.sampling=fixed.seed.sampling,B=B,na=na,nonpara=nonpara)
     tmp<-mt.transformX(X,classlabel,test,na,nonpara)
@@ -59,6 +61,7 @@ mt.teststat.num.denum<-function(X,classlabel,test="t",na=.mt.naNUM,nonpara="n")
 mt.minP<-function(X,classlabel,test="t",side="abs",
                   fixed.seed.sampling="y",B=10000,na=.mt.naNUM,nonpara="n")
 {
+    if(is.factor(classlabel)) classlabel<-unclass(classlabel)-1
     extra<-max(classlabel)+1
     mt.checkothers(side=side,fixed.seed.sampling=fixed.seed.sampling,B=B,na=na,nonpara=nonpara)
     tmp<-mt.transformX(X,classlabel,test,na,nonpara)
