@@ -343,11 +343,11 @@ setMethod("update","MTP",
 			if(smooth.null & min(rawp,na.rm=TRUE)==0){
 				zeros<-rawp==0
 				if(sum(zeros)==1){
-					den<-density(nulldistn[zeros,],to=max(obs[1,zeros]/obs[2,zeros],nulldist[zeros,],na.rm=TRUE),na.rm=TRUE)
+					den<-density(object@nulldist[zeros,],to=max(obs[1,zeros]/obs[2,zeros],object@nulldist[zeros,],na.rm=TRUE),na.rm=TRUE)
 					rawp[zeros]<-sum(den$y[den$x>=(obs[3,zeros]*obs[1,zeros]/obs[2,zeros])])/sum(den$y)
 				}
 				else{
-					den<-apply(nulldistn[zeros,],1,density,to=max(obs[1,zeros]/obs[2,zeros],nulldistn[zeros,],na.rm=TRUE),na.rm=TRUE)
+					den<-apply(object@nulldist[zeros,],1,density,to=max(obs[1,zeros]/obs[2,zeros],object@nulldist[zeros,],na.rm=TRUE),na.rm=TRUE)
 					newp<-NULL
 					stats<-obs[3,zeros]*obs[1,zeros]/obs[2,zeros]
 					for(i in 1:length(den)){
@@ -405,7 +405,7 @@ setMethod("update","MTP",
 				rm(temp)
 			}
 			#output results
-			if(!keep.nulldist) nulldistn<-matrix(nr=0,nc=0)		
+			if(!keep.nulldist) object@nulldist<-matrix(nr=0,nc=0)		
 			out<-new("MTP",statistic=object@statistic,estimate=object@estimate,sampsize=object@sampsize,rawp=rawp,adjp=out$adjp,conf.reg=out$cr,cutoff=out$c,reject=reject,nulldist=object@nulldist,call=newcall,seed=object@seed)
 			return(out)	
 		}
