@@ -344,12 +344,12 @@ setMethod("update","MTP",
 				zeros<-rawp==0
 				if(sum(zeros)==1){
 					den<-density(object@nulldist[zeros,],to=max(obs[1,zeros]/obs[2,zeros],object@nulldist[zeros,],na.rm=TRUE),na.rm=TRUE)
-					rawp[zeros]<-sum(den$y[den$x>=(obs[3,zeros]*obs[1,zeros]/obs[2,zeros])])/sum(den$y)
+					rawp[zeros]<-sum(den$y[den$x>=(obs[1,zeros]/obs[2,zeros])])/sum(den$y)
 				}
 				else{
 					den<-apply(object@nulldist[zeros,],1,density,to=max(obs[1,zeros]/obs[2,zeros],object@nulldist[zeros,],na.rm=TRUE),na.rm=TRUE)
 					newp<-NULL
-					stats<-obs[3,zeros]*obs[1,zeros]/obs[2,zeros]
+					stats<-obs[1,zeros]/obs[2,zeros]
 					for(i in 1:length(den)){
 						newp[i]<-sum(den[[i]]$y[den[[i]]$x>=stats[i]])/sum(den[[i]]$y)
 					}
