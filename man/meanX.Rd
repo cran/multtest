@@ -68,7 +68,7 @@ In the \code{MTP} function, the closure is first used to compute the vector of o
 For \code{meanX}, \code{diffmeanX}, \code{FX}, \code{blockFX}, \code{lmX}, \code{lmY}, and \code{coxY}, a closure consisting of a function for computing test statistics and its enclosing environment. For \code{get.Tn}, the observed test statistics stored in a matrix \code{obs} with numerator (possibly absolute value or negative, depending on the value of alternative) in the first row, denominator in the second row, and a 1 or -1 in the third row (depending on the value of alternative). The vector of observed test statistics is obs[1,]*obs[3,]/obs[2,].
 }
 
-\author{Katherine S. Pollard, \url{http://lowelab.ucsc.edu/katie/}\cr
+\author{Katherine S. Pollard, \url{http://docpollard.com/}\cr
 with design contributions from Sandrine Dudoit and Mark J. van der Laan}
 
 \seealso{\code{\link{MTP}}, \code{\link{get.Tn}}, \code{\link{wapply}}, \code{\link{boot.resample}}}

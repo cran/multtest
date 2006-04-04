@@ -193,7 +193,7 @@ blockFX<-function(label,na.rm=TRUE,robust=FALSE){
 			k<-length(ulab)
 			l<-n/k
 			if(round(l)*k!=n) stop("The blocks are not of equal size.")
-			block<-sort(rep(1:l,k))
+			block<-sort(rep(1:l,k))[samp]
 			ublock<-1:l
 			if(robust){
 			 	for(j in 1:l)
@@ -229,7 +229,7 @@ blockFX<-function(label,na.rm=TRUE,robust=FALSE){
 			k<-length(ulab)
 			l<-n/k
 			if(round(l)*k!=n) stop("The blocks are not of equal size.")
-			block<-sort(rep(1:l,k))
+			block<-sort(rep(1:l,k))[samp]
 			ublock<-1:l
 			if(robust){
 			 	for(j in 1:l)
@@ -243,7 +243,7 @@ blockFX<-function(label,na.rm=TRUE,robust=FALSE){
 				for(j in 1:l){
 					if(i==1)
 						mblock[j]<-mean(x[block==ublock[j]])
-					denom[(i-1)*l+j]<-x[xlabel==ulab[i] && block==ublock[j]]-mlab[i]-mblock[j]+m
+					denom[(i-1)*l+j]<-x[xlabel==ulab[i] & block==ublock[j]]-mlab[i]-mblock[j]+m
 				}
 			}
 			num<-sum(l*(mlab-m)^2)
@@ -394,29 +394,14 @@ coxY<-function(surv.obj,strata=NULL,psi0=0,na.rm=TRUE,standardize=TRUE,alternati
         	stop("Response must be a survival object")
 	if(!is.null(strata))
 		strata<-as.matrix(strata)
+	else
+		strata<-strata(rep(1,nrow(surv.obj)))
     	samp<-1:nrow(surv.obj)
     	function(x,w=NULL){
         	if(!is.null(w)&length(w)!=length(x))
             		stop("x and w must have same length")
-# Old method, using coxph. Now use coxph.fit since faster
-#        	na.action<-
-#			if(na.rm)
-#				"na.omit"
-#			else
-#				"na.fail"
-#		dep<-surv.obj[samp,]
-#		if(!is.null(strata))
-#			covar<-strata[samp,]
-#		fmla<- 
-#            		if(is.null(strata))
-#                		dep ~ .
-#            		else
-#                		dep ~ . + strata(covar)
-#        	srvd<-try(coxph(fmla,data=as.data.frame(x),weights=w,init=init,method=method,na.action=na.action))
-# New method, using coxph.fit and namespaces
 		dep<-surv.obj[samp,]
-		if(!is.null(strata))
-			covar<-strata(strata[samp,])
+		covar<-strata[samp]
 		if(na.rm){
 			drop<-is.na(x)
 			if(!is.null(w))
@@ -432,7 +417,6 @@ coxY<-function(surv.obj,strata=NULL,psi0=0,na.rm=TRUE,standardize=TRUE,alternati
 		design[!is.finite(w),]<-NA
 		control<-survival:::coxph.control()
 		srvd<-try(survival:::coxph.fit(design,dep,strata=covar,init=init,control=control,weights=w,method=method,rownames=row.names(design)))
-# end new method
         	if(inherits(srvd,"try-error"))
 	            return(c(NA,NA,NA))
 	        denom<-ifelse(standardize,sqrt(srvd$var[1,1]),1)

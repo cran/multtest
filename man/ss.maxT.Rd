@@ -69,7 +69,7 @@ Katherine S. Pollard and Mark J. van der Laan, "Resampling-based Multiple Testin
 \url{http://www.bepress.com/ucbbiostat/paper121}
 }
 
-\author{Katherine S. Pollard, \url{http://lowelab.ucsc.edu/katie/}\cr
+\author{Katherine S. Pollard, \url{http://docpollard.com/}\cr
 with design contributions from Sandrine Dudoit and Mark J. van der Laan.}
 
 \seealso{\code{\link{MTP}}}

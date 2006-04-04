@@ -108,12 +108,12 @@ S. Dudoit, M.J. van der Laan, K.S. Pollard (2004), Multiple Testing. Part I. Sin
 
 Katherine S. Pollard and Mark J. van der Laan, "Resampling-based Multiple Testing: Asymptotic Control of Type I Error and Applications to Gene Expression Data" (June 24, 2003). U.C. Berkeley Division of Biostatistics Working Paper Series. Working Paper 121.
 \url{http://www.bepress.com/ucbbiostat/paper121}
+
+Thank you to Peter Dimitrov for suggestions about the code.
 }
 
-\author{Katherine S. Pollard, \url{http://lowelab.ucsc.edu/katie/} \cr
+\author{Katherine S. Pollard, \url{http://docpollard.com/} \cr
 with design contributions from Sandrine Dudoit and Mark J. van der Laan.}
-
-\notes{Thank you to Peter Dimitrov for suggestions about the code.}
 
 \seealso{\code{\link{MTP-class}}, \code{\link{MTP-methods}}, \code{\link{mt.minP}}, \code{\link{mt.maxT}}, \code{\link{ss.maxT}}, \code{\link{fwer2gfwer}}}
 
