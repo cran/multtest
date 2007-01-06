@@ -507,9 +507,9 @@ wapply<-function(X,MARGIN,FUN,W=NULL,...){
           		dimnames(X)<-c(dn.call,list(NULL))
         	for(i in 1:d.ans){
 			if(is.vector(W))
-				ans[[i]]<-FUN(X[,i],W,...)
+				ans[[i]]<-FUN(X[,i]*W,...)
 			else
-				ans[[i]]<-FUN(X[,i],W[,i],...)
+				ans[[i]]<-FUN(X[,i]*W[,i],...)
     		}
     		ans.list<-is.recursive(ans[[1]])
     		l.ans<-length(ans[[1]])
