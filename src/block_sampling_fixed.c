@@ -49,6 +49,7 @@ void create_sampling_block(int n,int*L,int B)
     /*doing random permutation*/
     l_B=B;
     l_is_random=1;
+    set_seed(g_random_seed);
   }
     l_n=n;
     l_b=0;

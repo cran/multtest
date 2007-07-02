@@ -1,65 +1,132 @@
-#function to generate bootstrap null distribution
+#functions to generate bootstrap null distribution
 #theta0 is the value of the test statistics under the complete null hypthesis
+#tau0 is the scaling parameter (upper  bound on variance of test statistics)
 
-boot.resample<-function(X,stat.closure,W=NULL,B=1000,theta0=0,tau0=1){	
-	cat("running bootstrap...\n")
-	Xnames<-dimnames(X)[[1]]
-	X<-as.matrix(X)
-	p<-nrow(X)
-	n<-ncol(X)
-	if(!(is.vector(W) | is.matrix(W) | is.null(W)))
-		stop("W must be a vector or a matrix")	
-	if(is.null(W))
-		W<-matrix(1,nrow=p,ncol=n)
-	if(is.vector(W)){
-		if(length(W)==n)
-			W<-matrix(W,nrow=p,ncol=n,byrow=TRUE)
-		if(length(W)==p)
-			W<-matrix(W,nrow=p,ncol=n)
-		if(length(W)!=n & length(W)!=p)
-			stop("Length of W does not match dim(X)")
-	}
-	if(is.matrix(W) & (dim(W)[1]!=p | dim(W)[2]!=n))
-		stop("W and X must have same dimension")
-	muboot<-matrix(0,nrow=p,ncol=B)
-	samp<-sample(n,n*B,replace=TRUE)
-	cat("iteration = ")
-	muboot<-.C("bootloop",
-           as.numeric(X),
-           as.numeric(W),
-           as.integer(p),
-           as.integer(n),
-           as.integer(B),
-           muboot=double(p*B),
-           as.integer(samp),
-           body(stat.closure),
-           environment(stat.closure),
-	   NAOK=TRUE,	
-           PACKAGE="multtest"
-           )$muboot
-	cat("\n")
-	muboot<-matrix(muboot,nrow=p,ncol=B)
-	dimnames(muboot)<-list(Xnames,paste(1:B))
-	nas<-is.na(muboot)
-	count<-0
-	while(sum(nas)){
-		count<-count+1
-		if(count>1000)
-			stop("Bootstrap null disrtibution computation 
-terminating. Can not obtain distribution without missing values after 1000 
-attempts.")
-		nascols<-unique(col(muboot)[nas])
-		for(b in nascols){
-			samp<-sample(n,n,replace=TRUE)
-			Xb<-X[,samp]
-			Wb<-W[,samp]
-			Tb<-get.Tn(Xb,stat.closure,Wb)
-			muboot[,b]<-Tb[1,]/Tb[2,]
-		}
-		nas<-is.na(muboot)
-	}
-	(muboot-apply(muboot,1,mean)+theta0)*sqrt(pmin(1,tau0/apply(muboot,1,var)))
+boot.null <- function(X,label,stat.closure,W=NULL,B=1000,test, theta0=0,tau0=1,alternative="two.sided", seed=NULL, cluster=1,csnull=TRUE, dispatch=0.05){
+  cat("running bootstrap...\n")
+  X<-as.matrix(X)
+  n<-ncol(X)
+  p<-nrow(X)
+  if(!(is.vector(W) | is.matrix(W) | is.null(W))) stop("W must be a vector or a matrix")
+  if(is.null(W)) W<-matrix(1,nrow=p,ncol=n)
+  if(is.vector(W)){
+    if(length(W)==n) W<-matrix(W,nrow=p,ncol=n,byrow=TRUE)
+    if(length(W)==p) W<-matrix(W,nrow=p,ncol=n)
+    if(length(W)!=n & length(W)!=p) stop("Length of W does not match dim(X)")
+  }
+  if(is.matrix(W) & (dim(W)[1]!=p | dim(W)[2]!=n)) stop("W and X must have same dimension")
+
+  # Dispatch to cluster
+  if (is.numeric(cluster)) {
+    if(!is.null(seed)) set.seed(seed)
+    muboot <- boot.resample(X,label,p,n,stat.closure,W,B,test)
+  }
+  else {
+    if(!is.null(seed)) clusterApply(cluster, seed, set.seed)
+    else clusterApply(cluster, runif(length(cluster), max=10000000), set.seed)
+    # Create vector of jobs to dispatch
+          if ((dispatch > 0) & (dispatch < 1)){
+            BtoNodes <- rep(B*dispatch, 1/dispatch)
+          } else {
+             BtoNodes <- rep(dispatch, B/dispatch)
+          }
+    FromCluster <- clusterApplyLB(cluster, BtoNodes, boot.resample,X=X,label=label,p=p,n=n,stat.closure=stat.closure,W=W, test=test)
+    muboot <- matrix(unlist(FromCluster), nrow=nrow(X))
+  }
+
+  Xnames<-dimnames(X)[[1]]
+  dimnames(muboot)<-list(Xnames,paste(1:B))
+
+  #fill in any na's by resampling some more 
+  nas<-is.na(muboot)
+  count<-0
+  while(sum(nas)){
+    count<-count+1
+    if(count>1000) stop("Bootstrap null distribution computation terminating. Cannot obtain distribution without missing values after 1000 attempts. This problem may be resolved if you try again with a different seed.")
+    nascols<-unique(col(muboot)[nas])
+    for(b in nascols){
+      samp<-sample(n,n,replace=TRUE)
+      Xb<-X[,samp]
+      Wb<-W[,samp]
+      if(p==1){
+        Xb<-t(as.matrix(Xb))
+	Wb<-t(as.matrix(Wb))
+      }
+      Tb<-get.Tn(Xb,stat.closure,Wb)
+      muboot[,b]<-Tb[3,]*Tb[1,]/Tb[2,]
+    }
+    nas<-is.na(muboot)
+  }
+
+  if(csnull) muboot <- center.scale(muboot, theta0, tau0, alternative)
+  muboot
 }
 
+center.scale <- function(muboot, theta0, tau0, alternative){
+  muboot<-(muboot-apply(muboot,1,mean))*sqrt(pmin(1,tau0/apply(muboot,1,var)))+theta0
+  if(alternative=="greater") muboot <- muboot
+  else if(alternative=="less") muboot <- -muboot
+  else muboot <- abs(muboot)
+}
+
+boot.resample<-function(X,label,p,n,stat.closure,W,B, test){
+  muboot<-matrix(0,nrow=p,ncol=B)
+  if(any(test==c("t.twosamp.equalvar","t.twosamp.unequalvar", "t.pair","f"))){
+    label <- as.vector(label)
+    uniqlabs <- unique(label)
+    num.group <- length(uniqlabs)
+    groupIndex <- lapply(1:num.group, function(k) which(label==uniqlabs[k]))
+    obs <- sapply(1:num.group, function(x) length(groupIndex[[x]]))
+    samp <- lapply(1:num.group, function(k) matrix(NA,nrow=B,ncol=obs[k]))
+    for (j in 1:B){
+      for (i in 1:num.group){
+        uniq.obs<-1
+        count<-0
+        while (uniq.obs==1){
+           count<-count+1
+           samp[[i]][j,] <- sample(groupIndex[[i]], obs[i], replace=TRUE)
+           uniq.obs <- length(unique(samp[[i]][j,]))
+           if(count>1000) stop("Bootstrap null distribution computation terminating. Cannot obtain bootstrap sample with at least 2 unique observations after 1000 attempts. Sample size may be too small for bootstrap procedure but this problem may be resolved if you try again with a different seed.")
+        }
+      }
+    }
+    samp <- as.vector(t(matrix(unlist(samp), nrow=B, ncol=sum(obs))))
+  }
+  else if(test==c("f.twoway")){
+    label <- as.vector(label)
+    utreat <- unique(label)
+    num.treat <- length(utreat)
+    num.block <- length(gregexpr('12', paste(label, collapse=""))[[1]])
+    ublock<-1:num.block
+    Breaks <- c(0,gregexpr(paste(c(num.treat,1),collapse=""), paste(label, collapse=""))[[1]], n)
+    BlockNum <- sapply(1:num.block, function(x) Breaks[x+1]-Breaks[x])
+    block <- unlist(lapply(1:num.block, function(x) rep(x,BlockNum[x])))
+    groupIndex <- lapply(1:num.block, function(j) sapply(1:num.treat, function(i) which(label==utreat[i] & block==ublock[j])))
+    obs <- sapply(1:num.block, function(x) sapply(1:num.treat, function(y) length(groupIndex[[x]][,y])))
+    samp <- lapply(1:(num.treat*num.block), function(k) matrix(NA,nrow=B,ncol=obs[k]))
+    for (k in 1:B){
+      for (i in 1:num.block){
+        for (j in 1:num.treat){
+          uniq.obs<-1
+          count<-0
+          while (uniq.obs==1){
+            count<-count+1
+            samp[[(i-1)*num.treat+j]][k,] <- sample(groupIndex[[i]][,j], obs[j,i], replace=TRUE)
+            uniq.obs <- length(unique(samp[[(i-1)*num.treat+j]][k,]))
+            if(count>1000) stop("Bootstrap null distribution computation terminating. Cannot obtain bootstrap sample with at least 2 unique observations after 1000 attempts. Sample size may be too small for bootstrap procedure but this problem may be resolved if you try again with a different seed.")
+          }
+        }
+      }
+    }
+    samp <- as.vector(t(matrix(unlist(samp), nrow=B, ncol=sum(obs))))
+  }
+  else samp<-sample(n,n*B,replace=TRUE)
+  cat("iteration = ")
+  muboot <- .Call("bootloop", stat.closure, as.numeric(X), as.numeric(W),
+                  as.integer(p), as.integer(n), as.integer(B),
+                  as.integer(samp), NAOK = TRUE)
+  cat("\n")
+  muboot<-matrix(muboot,nrow=p,ncol=B)
+}
 
 

@@ -34,7 +34,7 @@ If the calls to \code{FUN} return vectors of different lengths, \code{wapply} re
 This function is used in the package \code{multtest} to compute weighted versions of test statistics. It is called by the function \code{get.Tn} inside the user-level function \code{MTP}.
 }
 
-\author{Katherine S. Pollard, \url{http://docpollard.com/}}
+\author{Katherine S. Pollard}
 
 \seealso{\code{\link{get.Tn}}, \code{\link{MTP}}}
 

@@ -22,7 +22,7 @@ get.index(adjp, rawp, stat)
 Numeric vector of indices so that the hypotheses can be ordered accroding to significance (smallest p-values and largest test statistics first). This function is used in the plot method for objects of class \code{MTP} to order adjusted p-values for graphical summaries. The summary method for objects of class \code{MTP} will return these indices as its second component.
 }
 
-\author{Katherine S. Pollard, \url{http://docpollard.com/}}
+\author{Katherine S. Pollard}
 
 \seealso{\code{\link{MTP}}, \code{\link{plot,MTP-method}}, \code{\link{summary,MTP-method}}}
 

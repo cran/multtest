@@ -1,0 +1,20 @@
+useDynLib(multtest)
+
+import(methods, Biobase, survival)
+
+importFrom(graphics, plot)
+importFrom(stats, update)
+
+exportClasses(MTP)
+
+exportMethods(as.list, plot, summary, update, "[" )
+
+export(MTP, as.list, mt.maxT, mt.minP, mt.plot, mt.rawp2adjp,
+  mt.reject, mt.sample.label, mt.sample.rawp, mt.sample.teststat,
+  mt.teststat, mt.teststat.num.denum, meanX, diffmeanX, FX, blockFX, 
+  twowayFX, lmX, lmY, coxY, get.Tn, boot.null, boot.resample, 
+  center.scale, fwer2gfwer, fwer2tppfp, fwer2fdr, get.index,
+  ss.maxT, ss.minP, sd.maxT, sd.minP, wapply)
+  
+S3method(print, MTP)
+

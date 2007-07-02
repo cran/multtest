@@ -63,7 +63,7 @@ void create_sampling(int n,int*L,int B)
   if((B<=0) || (B>=maxB)){
     /* checking if complete permutation doable*/
     if (fabs(f)>log(imax)){
-      fprintf(stderr,"as B(log(B)=%5.2f) is too big,we can not do the complete permutations\n",f);
+      fprintf(stderr,"as B(log(B)=%5.2lf) is too big,we can not do the complete permutations\n",f);
       return;/*exit(0);*/
     }
     /*when exceeding the maximum numbers, we'll use the complete permutaions*/

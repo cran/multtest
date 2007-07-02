@@ -53,8 +53,7 @@ Katherine S. Pollard and Mark J. van der Laan, "Resampling-based Multiple Testin
 \url{http://www.bepress.com/ucbbiostat/paper121}
 }
 
-\author{Katherine S. Pollard, \url{http://docpollard.com/}\cr
-with design contributions from Sandrine Dudoit and Mark J. van der Laan.}
+\author{Katherine S. Pollard with design contributions from Sandrine Dudoit and Mark J. van der Laan.}
 
 \seealso{\code{\link{MTP}}, \code{\link{MTP-class}}, \code{\link{MTP-methods}}, \code{\link{mt.minP}}, \code{\link{mt.maxT}}}
 

@@ -1,39 +1,55 @@
 #include <R.h>
 #include <Rinternals.h>
+#include <Rdefines.h>
 #include <math.h>
 
-void bootloop(double *X, double *W, int *p, int *n, int *B, double *muboot, int *samp, SEXP fbody, SEXP fenv){
+SEXP
+bootloop(SEXP fbody, SEXP X, SEXP W, SEXP p, SEXP n, SEXP B, SEXP samp)
+{
+  int B_len= INTEGER(B)[0], p_len=INTEGER(p)[0], num_samples, b, i, j;
+  SEXP Xb, Wb, Sb, Tb, muboot;
 
-  int B_len=*B, p_len=*p, num_samples=*n, b, i, j;
-  SEXP Xb, Wb, Sb, Tb;
+  num_samples = INTEGER(n)[0];
 
   PROTECT(Xb=allocVector(REALSXP,num_samples));
   PROTECT(Wb=allocVector(REALSXP,num_samples));
   PROTECT(Sb=allocVector(INTSXP,num_samples));
   PROTECT(Tb=allocVector(REALSXP,3));
+  PROTECT(muboot = allocVector(REALSXP, B_len * p_len));
 
+  SEXP e, ptr;
+  PROTECT(e=allocVector(LANGSXP,4)); // this includes the samp
+  SETCAR(e, fbody);
 
   for(b=0;b<B_len;b++){
+
     if((b%100==0.0) & (b>0.0)) /* modulo 100 */
       Rprintf("%d ",b);
+
     for(j=0;j<p_len;j++){
+
       for(i=0;i<num_samples;i++){
-	INTEGER(Sb)[i]=samp[num_samples*b+i];
-	REAL(Xb)[i]=X[(samp[num_samples*b+i]-1)*p_len+j];
-	REAL(Wb)[i]=W[(samp[num_samples*b+i]-1)*p_len+j];
+	INTEGER(Sb)[i]=INTEGER(samp)[num_samples*b+i];
+	REAL(Xb)[i]=REAL(X)[(INTEGER(samp)[num_samples*b+i]-1)*p_len+j];
+	REAL(Wb)[i]=REAL(W)[(INTEGER(samp)[num_samples*b+i]-1)*p_len+j];
       }
 
-      defineVar(install("samp"),Sb,fenv);
-      defineVar(install("x"),Xb,fenv);
-      defineVar(install("w"),Wb,fenv);
+      ptr = CDR(e);
+      SETCAR(ptr, Xb);
+      ptr = CDR(ptr);
+      SETCAR(ptr, Wb);
+      ptr = CDR(ptr);
+      SETCAR(ptr, Sb);
 
-      Tb=eval(fbody,fenv);
-      muboot[p_len*b+j]=REAL(Tb)[0]/REAL(Tb)[1];
+      Tb = eval(e, R_GlobalEnv);
+      REAL(muboot)[p_len*b+j] = REAL(Tb)[2]*REAL(Tb)[0]/REAL(Tb)[1];
     }
   }
 
   Rprintf("%d\n",B_len);
 
-  UNPROTECT(4);
+  UNPROTECT(6);
+
+  return(muboot);
 }
 
