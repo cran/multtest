@@ -237,9 +237,8 @@ MTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="t.
     if(is.numeric(cluster)){
       if(cluster>1){
     ## Check installation of packages
-      if("snow"%in%installed.packages()[,"Package"]) library(snow)
-        else
-         stop("The package snow is required to use a cluster. Either snow is not installed or it is not in the standard library location.")
+      have_snow <- qRequire("snow")
+      if(!have_snow) stop("The package snow is required to use a cluster. Either snow is not installed or it is not in the standard library location.")
       if (is.null(type))
          stop("Must specify type argument to use a cluster. Alternatively, provide a cluster object as the argument to cluster.")
       if (type=="SOCK")
@@ -247,14 +246,12 @@ MTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="t.
       if ((type!="PVM")&(type!="MPI"))
          stop("Type must be MPI or PVM")
       else if (type=="MPI"){
-         if("Rmpi"%in%installed.packages()[,"Package"]) library(Rmpi)
-         else
-             stop("The package Rmpi is required for the specified type. Either Rmpi is not installed or it is not in the standard library location.")
+         have_rmpi <- qRequire("Rmpi")
+         if(!have_rmpi) stop("The package Rmpi is required for the specified type. Either Rmpi is not installed or it is not in the standard library location.")
       }
       else if (type=="PVM"){
-         if("rpvm"%in%installed.packages()[,"Package"]) library(rpvm)
-         else
-             stop("The package rpvm is required for the specified type. Either rpvm is not installed or it is not in the standard library location.")
+         have_rpvm <- qRequire("rpvm")
+         if(!have_rpvm) stop("The package rpvm is required for the specified type. Either rpvm is not installed or it is not in the standard library location.")
       }
       cluster <- makeCluster(cluster, type)
       clusterEvalQ(cluster, {library(Biobase); library(multtest)})

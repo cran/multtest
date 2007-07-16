@@ -482,3 +482,8 @@ get.index<-function(adjp,rawp,stat){
   order(index)
 }
 
+qRequire <- function(pkg){
+   suppressWarnings(require(pkg, character.only=TRUE, quietly=TRUE, warn.conflicts=FALSE))
+}
+
+
