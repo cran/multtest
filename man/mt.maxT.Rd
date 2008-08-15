@@ -81,7 +81,6 @@ mt.minP(X,classlabel,test="t",side="abs",fixed.seed.sampling="y",B=10000,na=.mt.
   \item{adjp}{Vector of adjusted \eqn{p}-values, ordered according to \code{index}.}
   \item{plower}{For \code{\link{mt.minP}} function only, vector of "adjusted \eqn{p}-values", where ties in the permutation distribution of the successive minima of raw \eqn{p}-values with the observed \eqn{p}-values are counted only once. Note that procedures based on \code{plower} do not control the FWER. Comparison of \code{plower} and \code{adjp} gives an idea of the discreteness of the permutation distribution. Values in \code{plower} are ordered according to \code{index}.}
 }
-}
 
 \references{
 S. Dudoit, J. P. Shaffer, and J. C. Boldrick (Submitted). Multiple hypothesis testing in microarray experiments.\cr

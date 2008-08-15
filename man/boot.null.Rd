@@ -18,7 +18,7 @@ center.scale(muboot, theta0, tau0, alternative)
 }
 
 \arguments{
-  \item{X}{A matrix, data.frame or exprSet containing the raw data. In the case of an exprSet, \code{exprs(X)} is the data of interest and \code{pData(X)} may contain outcomes and covariates of interest. For \code{boot.resample} \code{X} must be a matrix. For currently implemented tests, one hypothesis is tested for each row of the data.}
+  \item{X}{A matrix, data.frame or ExpressionSet containing the raw data. In the case of an ExpressionSet, \code{exprs(X)} is the data of interest and \code{pData(X)} may contain outcomes and covariates of interest. For \code{boot.resample} \code{X} must be a matrix. For currently implemented tests, one hypothesis is tested for each row of the data.}
   \item{label}{A vector containing the class labels for t- and f-tests.}
   \item{stat.closure}{A closure for test statistic computation, like those produced internally by the \code{MTP} function. The closure consists of a function for computing the test statistic and its enclosing environment, with bindings for relevant additional arguments (such as null values, outcomes, and covariates).}
   \item{W}{A vector or matrix containing non-negative weights to be used in computing the test statistics. If a matrix, \code{W} must be the same dimension as \code{X} with one weight for each value in \code{X}. If a vector, \code{W} may contain one weight for each observation (i.e. column) of \code{X} or one weight for each variable (i.e. row) of \code{X}. In either case, the weights are duplicated appropriately. Weighted f-tests are not available. Default is 'NULL'.}

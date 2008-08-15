@@ -4,7 +4,7 @@ MTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="t.
   ##sanity checks / formatting
   #X
   if(missing(X)) stop("Argument X is missing")
-  if(inherits(X,"exprSet") | inherits(X,"eSet")){ 
+  if(inherits(X,"eSet")){ 
     if(is.character(Y)) Y<-pData(X)[,Y]
     if(is.character(Z)){
       if(Z%in%Y){

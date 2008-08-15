@@ -139,7 +139,7 @@ library(hgu95av2)
 
 The Acute Lymphoblastic Leukemia (ALL) microarray dataset of Chiaretti et al. \cite{Chiarettietal04} consists of 21 {\em phenotypes} (i.e., patient level responses and covariates) and 12,625 Affymetrix {\em gene expression measures} (chip series HGU95Av2), for each of 128 ALL patients. 
 For greater detail, please consult the \Rpackage{ALL} package documentation.
-The main object in this package is \Robject{ALL}, an instance of the class \Rclass{exprSet}, which contains the expression measures, phenotypes, and gene annotation information.  
+The main object in this package is \Robject{ALL}, an instance of the class \Rclass{ExpressionSet}, which contains the expression measures, phenotypes, and gene annotation information.  
 The genes-by-subjects matrix of expression measures is provided in the \Robject{exprs} slot of \Robject{ALL} and the phenotype data are stored in the \Robject{phenoData} slot. 
 Note that the expression measures have been obtained using the three-step robust multichip average (RMA) pre-processing method, implemented in the package \Rpackage{affy}. In particular, the expression measures have been subject to a base 2 logarithmic transformation.
 
@@ -433,7 +433,7 @@ The bootstrap-based MTPs implemented in the main \Robject{MTP} function (\Robjec
 The phenotype information in the \Rpackage{ALL} package includes the original remission status of the ALL patients (\Robject{remission} variable in the \Rclass{data.frame} \Robject{pData(ALL)}). 
 There are 88 subjects who experienced original complete remission (\texttt{remission="CR"}) and who were followed up for remission status at a later date. 
 We apply the single-step maxT procedure to test for a significant association between expression measures and time to relapse amongst these 88 subjects, adjusting for sex. 
-Note that most of the code below is concerned with extracting the (censored) time to relapse outcome and covariates from slots of the \Rclass{exprSet} instance \Robject{ALL}.
+Note that most of the code below is concerned with extracting the (censored) time to relapse outcome and covariates from slots of the \Rclass{ExpressionSet} instance \Robject{ALL}.
 
 <<coxphPrep, eval=TRUE, echo=TRUE>>=
 # Patients with original complete remission and who were followed up

@@ -123,7 +123,7 @@ The present vignette provides a summary of our proposed multiple testing procedu
 discusses their software implementation in the Bioconductor R package \Rpackage{multtest} (Section \ref{anal:mult:s:software}). 
 The accompanying vignette (MTPALL) describes their application to the ALL dataset of Chiaretti et al. \cite{Chiarettietal04}.
 
-Specifically, given a multivariate dataset (stored as a \Rclass{matrix}, \Rclass{data.frame}, or microarray object of class \Rclass{exprSet}) 
+Specifically, given a multivariate dataset (stored as a \Rclass{matrix}, \Rclass{data.frame}, or microarray object of class \Rclass{ExpressionSet}) 
 and user-supplied choices for the test statistics, Type I error rate and its target level, resampling-based estimator of the test statistics null distribution, and procedure for error rate control, the main user-level function \Robject{MTP} returns unadjusted and adjusted $p$-values, cut-off vectors for the test statistics, and estimates and confidence regions for the parameters of interest. 
 Both bootstrap and permutation estimators of the test statistics null distribution are available and can optionally be output to the user. 
 The variety of models and hypotheses, test statistics, Type I error rates, and MTPs currently implemented are discussed in Section \ref{anal:mult:s:MTP}.
@@ -632,13 +632,13 @@ args(MTP)
 
 \item{\em Data.} 
 The data, \Robject{X}, consist of a $J$--dimensional random vector, observed on each of $n$ sampling units (patients, cell lines, mice, etc). 
-These data can be stored in a $J \times n$ \Rclass{matrix}, \Rclass{data.frame}, or \Rclass{exprs} slot of an object of class \Rclass{exprSet}.
+These data can be stored in a $J \times n$ \Rclass{matrix}, \Rclass{data.frame}, or \Rclass{exprs} slot of an object of class \Rclass{ExpressionSet}.
 In some settings,  a $J$--vector of weights may be associated with each observation, and stored in a $J \times n$ weight matrix, \Robject{W} (or an $n$--vector \Robject{W}, if the weights are the same for each of the $J$ variables). 
-One may also observe a possibly censored continuous or polychotomous outcome, \Robject{Y}, for each sampling unit, as obtained, for example, from the \Rclass{phenoData} slot of an object of class \Rclass{exprSet}. 
+One may also observe a possibly censored continuous or polychotomous outcome, \Robject{Y}, for each sampling unit, as obtained, for example, from the \Rclass{phenoData} slot of an object of class \Rclass{ExpressionSet}. 
 In some studies, $L$ additional covariates may be measured on each sampling unit and stored in \Robject{Z}, an $n \times L$ \Rclass{matrix} or \Rclass{data.frame}. 
 When the tests concern parameters in regression models with covariates from \Robject{Z} (e.g., values \Robject{lm.XvsZ}, \Robject{lm.YvsXZ}, and \Robject{coxph.YvsXZ}, for the argument \Robject{test}, described below), the arguments \Robject{Z.incl} and \Robject{Z.test} specify, respectively, which covariates (i.e., which columns of \Robject{Z}, including \Robject{Z.test}) should be included in the model and which regression parameter is to be tested (only when \texttt{test="lm.XvsZ"}). 
 The covariates can be specified either by a numeric column index or character string.
-If \Robject{X} is an instance of the class \Rclass{exprSet}, \Robject{Y} can be a column index or character string referring to the variable in the \Rclass{data.frame} \Robject{pData(X)} to use as outcome. 
+If \Robject{X} is an instance of the class \Rclass{ExpressionSet}, \Robject{Y} can be a column index or character string referring to the variable in the \Rclass{data.frame} \Robject{pData(X)} to use as outcome. 
 Likewise, \Robject{Z.incl} and \Robject{Z.test} can be column indices or character strings referring to the variables in \Robject{pData(X)} to use as covariates.
 The data components (\Robject{X}, \Robject{W}, \Robject{Y}, \Robject{Z}, \Robject{Z.incl}, and \Robject{Z.test}) are the first six arguments to the \Robject{MTP} function. 
 Only \Robject{X} is a required argument; the others are by default \Robject{NULL}.
