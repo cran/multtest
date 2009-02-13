@@ -69,8 +69,8 @@ diffmeanX<-function(label,psi0=0,var.equal=FALSE,na.rm=TRUE,standardize=TRUE,alt
     xlabel <- as.numeric(xlabel)
 
     # Check for at least 2 unique values in each group
-    if(length(unique.default(x[xlabel==lab1]))==1) stop("Only one unique value in bootstrap sample for first group. Cannot calculate variance. This problem may be resolved if you try again with a different seed.")
-		if(length(unique.default(x[xlabel!=lab1]))==1) stop("Only one unique value in bootstrap sample for second group. Cannot calculate variance. This problem may be resolved if you try again with a different seed.")
+    if(standardize & length(unique.default(x[xlabel==lab1]))==1) stop("Only one unique value in bootstrap sample for first group. Cannot calculate variance. This problem may be resolved if you try again with a different seed.")
+    if(standardize & length(unique.default(x[xlabel!=lab1]))==1) stop("Only one unique value in bootstrap sample for second group. Cannot calculate variance. This problem may be resolved if you try again with a different seed.")
     n<-length(x)
     if(robust) x<-rank(x)
     if ((sum(w==1)==n)&(standardize)){
@@ -601,8 +601,8 @@ coxY<-function(surv.obj,strata=NULL,psi0=0,na.rm=TRUE,standardize=TRUE,alternati
 		}
 		design<-cbind(x,rep(1,length(x)))
 		design[!is.finite(w),]<-NA
-		control<-survival:::coxph.control()
-		srvd<-try(survival:::coxph.fit(design,dep,strata=covar,init=init,control=control,weights=w,method=method,rownames=rownames(design)))
+		control<-coxph.control()
+		srvd<-try(coxph.fit(design,dep,strata=covar,init=init,control=control,weights=w,method=method,rownames=rownames(design)))
         	if(inherits(srvd,"try-error"))
 	            return(c(NA,NA,NA))
 	        if(standardize) denom <- sqrt(srvd$var[1,1])

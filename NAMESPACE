@@ -1,9 +1,13 @@
 useDynLib(multtest)
 
-import(methods, Biobase, survival)
+import(methods, Biobase)
 
 importFrom(graphics, plot)
 importFrom(stats, update)
+
+importFrom(survival, is.Surv)
+importFrom(survival, coxph.control)
+importFrom(survival, coxph.fit)
 
 exportClasses(MTP)
 

@@ -30,7 +30,7 @@ MTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="t.
   }
   #Y
   if(!is.null(Y)){
-    if(survival:::is.Surv(Y)){
+    if(is.Surv(Y)){
       if(test!="coxph.YvsXZ") stop(paste("Test ",test," does not work with a survival object Y",sep=""))
     }
     else{

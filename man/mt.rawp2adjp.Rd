@@ -25,48 +25,48 @@ mt.rawp2adjp(rawp, proc=c("Bonferroni", "Holm", "Hochberg", "SidakSS", "SidakSD"
     multiple testing procedures for which adjusted \eqn{p}-values are to
     be computed. This vector should include any of the following:
     \code{"Bonferroni"}, \code{"Holm"}, \code{"Hochberg"},
-    \code{"SidakSS"}, \code{"SidakSD"}, \code{"BH"}, \code{"BY"}. 
-}
-}
-\details{
+    \code{"SidakSS"}, \code{"SidakSD"}, \code{"BH"}, \code{"BY"}.
+
   Adjusted \eqn{p}-values are computed for simple FWER and FDR
   controlling procedures based on a vector of raw (unadjusted)
-  \eqn{p}-values.
-\item{Bonferroni}{Bonferroni single-step adjusted \eqn{p}-values
-for strong control of the FWER.} 
-\item{Holm}{Holm (1979) step-down adjusted \eqn{p}-values for
-strong control of the FWER.}
-\item{Hochberg}{ Hochberg (1988) step-up adjusted \eqn{p}-values
-for 
-strong control of the FWER (for raw (unadjusted) \eqn{p}-values
-satisfying the Simes inequality).} 
-\item{SidakSS}{Sidak single-step adjusted \eqn{p}-values for
-strong control of the FWER (for positive orthant dependent test
-statistics).} 
-\item{SidakSD}{Sidak step-down adjusted \eqn{p}-values for
-strong control of the FWER (for positive orthant dependent test
-statistics).} 
-\item{BH}{adjusted \eqn{p}-values for the Benjamini & Hochberg
-(1995) step-up FDR controlling procedure (independent and positive
-regression dependent test statistics).}
-\item{BY}{adjusted \eqn{p}-values for the Benjamini & Yekutieli
-(2001) step-up FDR controlling procedure (general dependency
-structures).}
+  \eqn{p}-values by one or more of the following methods.
+  \describe{
+  \item{Bonferroni}{Bonferroni single-step adjusted \eqn{p}-values
+  for strong control of the FWER.} 
+  \item{Holm}{Holm (1979) step-down adjusted \eqn{p}-values for
+  strong control of the FWER.}
+  \item{Hochberg}{Hochberg (1988) step-up adjusted \eqn{p}-values
+  for strong control of the FWER (for raw (unadjusted) \eqn{p}-values
+  satisfying the Simes inequality).} 
+  \item{SidakSS}{Sidak single-step adjusted \eqn{p}-values for
+  strong control of the FWER (for positive orthant dependent test
+  statistics).} 
+  \item{SidakSD}{Sidak step-down adjusted \eqn{p}-values for
+  strong control of the FWER (for positive orthant dependent test
+  statistics).} 
+  \item{BH}{adjusted \eqn{p}-values for the Benjamini & Hochberg
+  (1995) step-up FDR controlling procedure (independent and positive
+  regression dependent test statistics).}
+  \item{BY}{adjusted \eqn{p}-values for the Benjamini & Yekutieli
+  (2001) step-up FDR controlling procedure (general dependency
+  structures).}
+  }
+  }
 }
 
 \value{
 A list with components
-  \item{adjp}{A matrix of adjusted \eqn{p}-values, with rows
+   \item{adjp}{A matrix of adjusted \eqn{p}-values, with rows
     corresponding to hypotheses and columns to multiple testing
     procedures. Hypotheses are sorted in increasing order of their raw
     (unadjusted) \eqn{p}-values.} 
-  \item{index}{A vector of row indices, between 1 and
+   \item{index}{A vector of row indices, between 1 and
     \code{length(rawp)}, where rows are sorted according to 
     their raw (unadjusted) \eqn{p}-values. To obtain the adjusted
     \eqn{p}-values in the original data order, use
-    \code{adjp[order(index),]}. 
+    \code{adjp[order(index),]}.}
 }
-}
+
 \references{
 Y. Benjamini and Y. Hochberg (1995). Controlling the false discovery
 rate: a practical and powerful approach to multiple
@@ -92,6 +92,7 @@ procedure. \emph{Scand. J. Statist.}. Vol. 6: 65-70.
   Sandrine Dudoit, \url{http://www.stat.berkeley.edu/~sandrine},\cr
   Yongchao Ge, \email{yongchao.ge@mssm.edu}. 
 }
+
 \seealso{\code{\link{mt.maxT}}, \code{\link{mt.minP}},
   \code{\link{mt.plot}}, \code{\link{mt.reject}}, \code{\link{golub}}.}
 

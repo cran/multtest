@@ -167,7 +167,7 @@ mt.legend<-function(x, y = NULL, legend, fill = NULL, col = "black", lty,
         text(x, y, ...)
     }
     if (trace) 
-        catn <- function(...) do.call("cat", c(lapply(list(...), 
+        catn <- function(...) do.call(cat, c(lapply(list(...), 
             formatC), list("\n")))
     cin <- par("cin")
     Cex <- cex * par("cex")

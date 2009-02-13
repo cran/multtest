@@ -436,6 +436,7 @@ We apply the single-step maxT procedure to test for a significant association be
 Note that most of the code below is concerned with extracting the (censored) time to relapse outcome and covariates from slots of the \Rclass{ExpressionSet} instance \Robject{ALL}.
 
 <<coxphPrep, eval=TRUE, echo=TRUE>>=
+library(survival)
 # Patients with original complete remission and who were followed up
 cr.ind <- pheno$remission=="CR"
 cr.pheno <- pheno[cr.ind,]
