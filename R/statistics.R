@@ -34,7 +34,7 @@ meanX<-function(psi0=0,na.rm=TRUE,standardize=TRUE,alternative="two.sided",robus
 	 		   }
     else snum<-1
     }
-		c(num,denom,snum)
+		c(num*sqrt(sumw),denom,snum)
 	}
 }
 
@@ -334,7 +334,7 @@ blockFX<-function(label,na.rm=TRUE,robust=FALSE){
 #  each block, they are labeled using the integers 1 to k.
 #Friedman statistic if robust=TRUE
 
-twowayFX<-function(label,na.rm=TRUE,robust=FALSE){
+twowayFX <-function(label,na.rm=TRUE,robust=FALSE){
 	if(is.null(label))
 		stop("A label variable is needed for this test")
 	Samp<-1:length(label)
@@ -355,11 +355,10 @@ twowayFX<-function(label,na.rm=TRUE,robust=FALSE){
 			ublock<-1:l
       Breaks <- c(0,gregexpr(paste(c(k,1),collapse=""), paste(xlabel, collapse=""))[[1]], n)
       BlockNum <- sapply(1:l, function(x) Breaks[x+1]-Breaks[x])
-      block <- as.vector(sapply(1:l, function(x) rep(x,BlockNum[x])))
+      block <- unlist(sapply(1:l, function(x) rep(x,BlockNum[x])))
 			if(robust){
-			 	for(j in 1:l){
+			 	for(j in 1:l)
 					x[block==j]<-rank(x[block==j])
-					}
 			}
 			m<-mean(x)
 			mlab<-mblock<-mcell<-denom<-NULL
@@ -369,7 +368,6 @@ twowayFX<-function(label,na.rm=TRUE,robust=FALSE){
 					if(i==1)
 						mblock[j]<-mean(x[block==ublock[j]])
             denom[(i-1)*l+j]<-sum((mean(x[xlabel==ulab[i] & block==ublock[j]])-mlab[i]-mblock[j]+m)^2)
-            if(denom[(i-1)*l+j]==0) stop("Denominator sum of squares is 0 for a bootstrap sample. This problem may resuly from too small and sample size but may be resolved if you try again with a different seed.")
 				}
 			}
       num<-sum(l*(mlab-m)^2)/(k-1)
@@ -394,11 +392,10 @@ twowayFX<-function(label,na.rm=TRUE,robust=FALSE){
 			ublock<-1:l
       Breaks <- c(0,gregexpr(paste(c(k,1),collapse=""), paste(xlabel, collapse=""))[[1]], n)
       BlockNum <- sapply(1:l, function(x) Breaks[x+1]-Breaks[x])
-      block <- as.vector(sapply(1:l, function(x) rep(x,BlockNum[x])))
+      block <- unlist(sapply(1:l, function(x) rep(x,BlockNum[x])))
 			if(robust){
-			 	for(j in 1:l){
+			 	for(j in 1:l)
 					x[block==j]<-rank(x[block==j])
-				}
 			}
 #TODO: how to deal with weights in block f?
 			m<-mean(x)
@@ -409,7 +406,6 @@ twowayFX<-function(label,na.rm=TRUE,robust=FALSE){
 					if(i==1)
 						mblock[j]<-mean(x[block==ublock[j]])
             denom[(i-1)*l+j]<-sum((mean(x[xlabel==ulab[i] & block==ublock[j]])-mlab[i]-mblock[j]+m)^2)
-            if(denom[(i-1)*l+j]==0) stop("Denominator sum of squares is 0 for a bootstrap sample. This problem may resuly from too small and sample size but may be resolved if you try again with a different seed.")
 				}
 			}
 			num<-sum(l*(mlab-m)^2)/(k-1)
@@ -418,6 +414,7 @@ twowayFX<-function(label,na.rm=TRUE,robust=FALSE){
 		c(num,denom,1)
 	}
 }
+
 
 ## Z is a design *matrix*
 ## with variable of interest in first column

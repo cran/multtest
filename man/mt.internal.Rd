@@ -14,6 +14,13 @@
 \alias{mt.checkclasslabel}
 \alias{mt.niceres}
 \alias{mt.legend}
+\alias{corr.Tn}
+\alias{diffs.1.N}
+\alias{IC.Cor.NA}
+\alias{IC.CorXW.NA}
+\alias{insert.NA}
+\alias{marg.samp}
+
 \title{Internal multtest functions and variables}
 \description{
   Internal multtest functions and variables
@@ -40,6 +47,12 @@ mt.legend(x, y = NULL, legend, fill = NULL, col = "black", lty,
     yjust = 1, x.intersp = 1, y.intersp = 1, adj = c(0, 0.5), 
     text.width = NULL, text.col = par("col"), merge = do.lines && 
         has.pch, trace = FALSE, plot = TRUE, ncol = 1, horiz = FALSE,...)
+corr.Tn(X, test, alternative, use = "pairwise") 
+diffs.1.N(vec1, vec2, e1, e2, e21, e22, e12) 
+IC.Cor.NA(IC, W, N, M, output) 
+IC.CorXW.NA(X, W, N, M, output)
+insert.NA(orig.NA, res.vec)
+marg.samp(marg.null, marg.par, m, B, ncp)   
 }
 \details{
   These are not to be called directly by the user.

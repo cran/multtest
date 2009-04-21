@@ -1,15 +1,49 @@
 mt.rawp2adjp<-function(rawp,
-      proc=c("Bonferroni","Holm","Hochberg","SidakSS","SidakSD","BH","BY"))
+      proc=c("Bonferroni","Holm","Hochberg","SidakSS","SidakSD","BH","BY","ABH",
+      "TSBH"), alpha=0.05)
 {
 
   m<-length(rawp)
   n<-length(proc)
+  a<-length(alpha)
   index<-order(rawp)
+  h0.ABH<-NULL
+  h0.TSBH <- NULL
   spval<-rawp[index]
 
   adjp<-matrix(0,m,n+1)
   dimnames(adjp)<-list(NULL,c("rawp",proc))
   adjp[,1]<-spval
+
+  if(is.element("TSBH",proc))
+  {
+    #N.B.: This method performed first in order to handle a potential $adjp
+    #dimension change in the case that length(alpha)>1.
+    #Could also be possibly done using more append() functions, should more 
+    #alpha-dependent procedures be developed/included later.
+    TS.spot <- which(proc=="TSBH")
+    TSBHs<-paste("TSBH",alpha,sep="_")
+    newprocs<-append(proc,TSBHs,after=TS.spot)
+    newprocs<-newprocs[newprocs!="TSBH"]
+    adjp<-matrix(0,m,n+a)
+    dimnames(adjp)<-list(NULL,c("rawp",newprocs))
+    adjp[,1]<-spval
+
+    # Apply first-pass BH.  
+    tmp<-spval
+    for(i in (m-1):1){
+      tmp[i]<-min(tmp[i+1],min((m/i)*spval[i],1,na.rm=TRUE),na.rm=TRUE)
+      if(is.na(spval[i])) tmp[i]<-NA
+    }
+    # Now use first-pass results to estimate h_0, the number of true nulls.
+    # These results depend on the nominal testing level, alpha.
+    h0.TSBH <- rep(0,length(alpha))
+    names(h0.TSBH) <- paste("h0.TSBH",alpha,sep="_")
+    for(i in 1:length(alpha)){
+      h0.TSBH[i] <- m - sum(tmp < alpha[i]/(1+alpha[i]),na.rm=TRUE)
+      adjp[,TS.spot+i]<-tmp*h0.TSBH[i]/m
+    }
+  }
 
   if(is.element("Bonferroni",proc))
   {
@@ -63,7 +97,7 @@ mt.rawp2adjp<-function(rawp,
   {
     tmp<-spval
     a<-sum(1/(1:m))
-    tmp[m]<-min(a*spval[m], 1) #noting we need to set tmp[m]
+    tmp[m]<-min(a*spval[m], 1) 
     for(i in (m-1):1){
       tmp[i]<-min(tmp[i+1],min((m*a/i)*spval[i],1,na.rm=TRUE),na.rm=TRUE)
       if(is.na(spval[i])) tmp[i]<-NA
@@ -71,8 +105,27 @@ mt.rawp2adjp<-function(rawp,
     adjp[,"BY"]<-tmp
   }
 
-  list(adjp=adjp,index=index)
+  if(is.element("ABH",proc))
+  {
+    # First obtain estimate of h_0, the number of true null hypotheses.
+    tmp<-spval
+    h0.m <- rep(0,m)
+    for(k in 1:m){
+      h0.m[k] <- (m+1-k)/(1-spval[k])
+    }
+    grab <- min(which(diff(h0.m,na.rm=TRUE)>0),na.rm=TRUE)
+    h0.ABH <- ceiling(min(h0.m[grab],m))
+    # Now apply BH procedure with adaptive correction.  
+    for(i in (m-1):1){
+      tmp[i]<-min(tmp[i+1],min((m/i)*spval[i],1,na.rm=TRUE),na.rm=TRUE)
+      if(is.na(spval[i])) tmp[i]<-NA
+    }
+    adjp[,"ABH"]<-tmp*h0.ABH/m
+  }
+
+  list(adjp=adjp,index=index,h0.ABH=h0.ABH[1],h0.TSBH=h0.TSBH[1:length(alpha)])
 }
+
 
 ###########################################################################
 

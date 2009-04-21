@@ -1,6 +1,6 @@
 #main user-level function for multiple hypothesis testing
 
-MTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="t.twosamp.unequalvar",robust=FALSE,standardize=TRUE,alternative="two.sided",psi0=0,typeone="fwer",k=0,q=0.1,fdr.method="conservative",alpha=0.05,smooth.null=FALSE,nulldist="boot",csnull=TRUE,B=1000,method="ss.maxT",get.cr=FALSE,get.cutoff=FALSE,get.adjp=TRUE,keep.nulldist=TRUE,seed=NULL,cluster=1,type=NULL,dispatch=NULL){
+MTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="t.twosamp.unequalvar",robust=FALSE,standardize=TRUE,alternative="two.sided",psi0=0,typeone="fwer",k=0,q=0.1,fdr.method="conservative",alpha=0.05,smooth.null=FALSE,nulldist="boot.cs",B=1000,ic.quant.trans=FALSE,MVN.method="mvrnorm",penalty=1e-6,method="ss.maxT",get.cr=FALSE,get.cutoff=FALSE,get.adjp=TRUE,keep.nulldist=TRUE,keep.rawdist=FALSE,seed=NULL,cluster=1,type=NULL,dispatch=NULL,marg.null=NULL,marg.par=NULL,keep.margpar=TRUE,ncp=NULL,perm.mat=NULL,keep.index=FALSE,keep.label=FALSE){
   ##sanity checks / formatting
   #X
   if(missing(X)) stop("Argument X is missing")
@@ -23,8 +23,10 @@ MTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="t.
   #W
   if(!is.null(W)){
     W[W<=0]<-NA
-    if(test%in%c("f","f.block","f.twoway")){
-      warning("Weights can not be used with F-tests, arg W is being ignored.")
+    if(is.vector(W) & length(W)==n) W <- matrix(rep(W,p),nr=p,nc=n,byrow=TRUE)
+    if(is.vector(W) & length(W)==p) W <- matrix(rep(W,n),nr=p,nc=n)
+    if(test%in%c("f","f.block","f.twoway","t.cor","z.cor")){
+      warning("Weights can not be used with F-tests or tests of correlation parameters, arg W is being ignored.")
       W<-NULL
     }
   }
@@ -44,7 +46,7 @@ MTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="t.
     Z<-as.matrix(Z)
     if(nrow(Z)!=n) stop("Covariates in Z have length ",nrow(Z),", not equal to n=",n,"\n")
     #Z.incl tells which columns of Z to include in model
-    if(is.null(Z.incl)) Z.incl==(1:ncol(Z))
+    if(is.null(Z.incl)) Z.incl<-(1:ncol(Z))
     if(length(Z.incl)>ncol(Z)) stop("Number of columns in Z.incl ",length(Z.incl)," exceeds ncol(Z)=",ncol(Z))
     if(is.logical(Z.incl)) Z.incl<-(1:ncol(Z))[Z.incl]
     if(is.character(Z.incl) & length(Z.incl)!=sum(Z.incl%in%colnames(Z))) stop(paste("Z.incl=",Z.incl," names columns not in Z",sep=""))
@@ -68,10 +70,10 @@ MTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="t.
     rm(Za)
   }
   #test
-  TESTS<-c("t.onesamp","t.twosamp.equalvar","t.twosamp.unequalvar","t.pair","f","f.block","f.twoway","lm.XvsZ","lm.YvsXZ","coxph.YvsXZ")
+  TESTS<-c("t.onesamp","t.twosamp.equalvar","t.twosamp.unequalvar","t.pair","f","f.block","f.twoway","lm.XvsZ","lm.YvsXZ","coxph.YvsXZ","t.cor","z.cor")
   test<-TESTS[pmatch(test,TESTS)]
   if(is.na(test)) stop(paste("Invalid test, try one of ",TESTS,sep=""))
-  #robust
+  #robust + see below with choice of nulldist
   if(test=="coxph.YvsXZ" & robust==TRUE)
     warning("No robust version of coxph.YvsXZ, proceding with usual version")
   #alternative
@@ -88,6 +90,7 @@ MTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="t.
   nalpha<-length(alpha)
   reject<-
     if(nalpha) array(dim=c(p,nalpha),dimnames=list(rownames(X),paste("alpha=",alpha,sep="")))
+    if(test=="z.cor" | test=="t.cor") matrix(nr=0,nc=0) # deprecated for correlations, rownames now represent p choose 2 edges - too weird and clunky in current state for output.
     else matrix(nr=0,nc=0)
   if(typeone=="gfwer"){
     if(get.cr==TRUE) warning("Confidence regions not currently implemented for gFWER")
@@ -97,7 +100,7 @@ MTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="t.
     if(k>=p) stop(paste("Number of false positives must be less than number of tests=",p,sep=""))
     if(length(k)>1){
       k<-k[1]
-      warning("can only compute gfwer adjp for one value of k at a time (using first value), try fwer2gfwer() function for multiple k")
+      warning("can only compute gfwer(k) adjp for one value of k at a time (using first value), try fwer2gfwer() function for multiple k")
     }
   }
   if(typeone=="tppfp"){
@@ -118,11 +121,26 @@ MTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="t.
     get.cr<-get.cutoff<-FALSE
   }		
   #null distribution
-  NULLS<-c("boot","perm")
+  NULLS<-c("boot","boot.cs","boot.ctr","boot.qt","ic","perm")
   nulldist<-NULLS[pmatch(nulldist,NULLS)]
   if(is.na(nulldist)) stop(paste("Invalid nulldist, try one of ",NULLS,sep=""))
-  if(nulldist=="boot" & test=="f.block") stop("f.block test only available with permutation null distribution. Try test=f.twoway")
-  if(nulldist=="perm" & !csnull) stop("Test statistics distribution estimation using csnull=FALSE is only available with bootstrap null distribution")
+  if(nulldist=="boot"){
+    nulldist <- "boot.cs"
+    warning("nulldist='boot' is deprecated and now corresponds to 'boot.cs'. Proceeding with default center and scaled null distribution.")
+  }
+  if(nulldist!="perm" & test=="f.block") stop("f.block test only available with permutation null distribution. Try test=f.twoway")
+  if((nulldist=="perm" | nulldist=="ic") & keep.rawdist==TRUE) stop("Test statistics distribution estimation using keep.rawdist=TRUE is only available with a bootstrap-based null distribution")
+  if(nulldist=="boot.qt" & robust==TRUE) stop("Quantile transform method requires parametric marginal nulldist.  Set robust=FALSE")
+  if(nulldist=="boot.qt" & standardize==FALSE) stop("Quantile transform method requires standardized test statistics.  Set standardize=TRUE")
+  if(nulldist=="ic" & robust==TRUE) stop("Influence curve null distributions available only for (parametric) t-statistics.  Set robust=FALSE")
+  if(nulldist=="ic" & standardize==FALSE) stop("Influence curve null distributions available only for (standardized) t-statistics.  Set standardize=TRUE")
+  if(nulldist=="ic" & (test=="f" | test=="f.twoway" | test=="f.block" | test=="coxph.YvsXZ")) stop("Influence curve null distributions available only for tests of mean, regression and correlation parameters. Cox PH also not yet implemented.")
+  if(nulldist!="ic" & (test=="t.cor" | test=="z.cor")) stop("Tests of correlation parameters currently only implemented for influence curve null distributions")
+  if((test!="t.cor" & test!="z.cor") & keep.index) warning("Matrix of indices only returned for tests of correlation parameters")
+  ### specifically for sampling null test statistics with IC nulldist
+  MVNS <- c("mvrnorm","Cholesky")
+  MVN.method <- MVNS[pmatch(MVN.method,MVNS)]
+  if(is.na(MVN.method)) stop("Invalid sampling method for IC-based MVN null test statistics.  Try either 'mvrnorm' or 'Cholesky'")
   #methods
   METHODS<-c("ss.maxT","ss.minP","sd.maxT","sd.minP")
   method<-METHODS[pmatch(method,METHODS)]
@@ -132,16 +150,17 @@ MTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="t.
   if(test=="f" | test=="f.block"){
     ftest<-TRUE
     if(get.cr) stop("Confidence intervals not available for F tests, try get.cr=FALSE")
-    if(!is.null(W)) warning("Weighted f tests not yet implemented, proceding with unweighted version")
+    if(!is.null(W)) warning("Weighted F tests not yet implemented, proceding with unweighted version")
   }
 
-  #permutation null distribution
+  
+  #permutation null distribution - self contained in this if statement
   if(nulldist=="perm"){
     if(method=="ss.minP" | method=="ss.maxT") stop("Only step-down procedures are currently available with permutation nulldist")
     if(smooth.null) warning("Kernal density p-values not available with permutation nulldist")
-    if(get.cr) warning("Confidence regions not available with permuation nulldist")
-    if(get.cutoff) warning("Cut-offs not available with permuation nulldist")
-    if(keep.nulldist) warning("keep.nulldist not available with permuation nulldist")
+    if(get.cr) warning("Confidence regions not available with permutation nulldist")
+    if(get.cutoff) warning("Cut-offs not available with permutation nulldist")
+    #if(keep.nulldist) warning("keep.nulldist not available with permutation nulldist")
     ptest<-switch(test,
                   t.onesamp=stop("One sample t-test not available with permutation nulldist"),
                   t.twosamp.equalvar=ifelse(robust,"wilcoxon","t.equalvar"),
@@ -152,7 +171,9 @@ MTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="t.
                   f.twoway=stop("f.twoway not available with permutation nulldist"),
                   lm.XvsZ=stop("lm.XvsZ not available with permutation nulldist"),
                   lm.YvsXZ=stop("lm.YvsXZ not available with permutation nulldist"),
-                  coxph.YvsXZ=stop("coxph.YvsXZ not available with permutation nulldist")
+                  coxph.YvsXZ=stop("coxph.YvsXZ not available with permutation nulldist"),
+                  t.cor=stop("t.cor not available with permutation nulldist"),
+                  z.cor=stop("z.cor not available with permutation nulldist")
                   )
     pside<-switch(alternative,two.sided="abs",less="lower",greater="upper")
     pnonpara<-
@@ -196,9 +217,69 @@ MTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="t.
     }			
     #output results
     orig<-order(presult$index)
-    out<-new("MTP",statistic=presult$teststat[orig],estimate=vector("numeric",0),sampsize=n,rawp=presult$rawp[orig],adjp=presult$adjp[orig],conf.reg=array(dim=c(0,0,0)),cutoff=matrix(nr=0,nc=0),reject=as.matrix(reject[orig,]),nulldist=matrix(nr=0,nc=0),call=match.call(),seed=vector("integer",0))
+    if(keep.label) label <- as.numeric(Y)
+    else label <- vector("numeric",0)
+    out<-new("MTP",statistic=presult$teststat[orig],estimate=vector("numeric",0),sampsize=n,rawp=presult$rawp[orig],adjp=presult$adjp[orig],conf.reg=array(dim=c(0,0,0)),cutoff=matrix(nr=0,nc=0),reject=as.matrix(reject[orig,]),rawdist=matrix(nr=0,nc=0),nulldist=matrix(nr=0,nc=0),nulldist.type="perm",marg.null=vector("character",0),marg.par=matrix(nr=0,nc=0),label=label,index=matrix(nr=0,nc=0),call=match.call(),seed=vector("integer",0))
   }
-  else{
+  
+  else{ # This should apply to all other MTP calls using the bootstrap and IC nulldists.
+    if(nulldist=="boot.qt"){ # get parameter vals for quantile transform.
+      # Get parameter values for the quantile transformed nulldist
+      if(!is.null(marg.par)){
+        if(is.matrix(marg.par)) marg.par <- marg.par
+        if(is.vector(marg.par)) marg.par <- matrix(rep(marg.par,p),nr=p,nc=length(marg.par),byrow=TRUE)
+        }
+      if(is.null(ncp)) ncp = 0
+      if(!is.null(perm.mat)){ 
+        if(dim(X)[1]!=dim(perm.mat)[1]) stop("perm.mat must same number of rows as X.")
+        }
+    
+      nstats <- c("t.twosamp.unequalvar","z.cor","lm.XvsZ","lm.YvsXZ","coxph.lmYvsXZ")
+      tstats <- c("t.onesamp","t.twosamp.equalvar","t.pair","t.cor")
+      fstats <- c("f","f.block","f.twoway")
+      
+      # If default , set values of marg.null to pass on.
+      if(is.null(marg.null)){
+	  if(any(nstats == test)) marg.null="normal"
+	  if(any(tstats == test)) marg.null="t"
+	  if(any(fstats == test)) marg.null="f"
+        }
+      else{ # Check to see that user-supplied entries make sense.  
+        MARGS <- c("normal","t","f","perm")
+        marg.null <- MARGS[pmatch(marg.null,MARGS)]
+        if(is.na(marg.null)) stop("Invalid marginal null distribution. Try one of: normal, t, f, or perm")
+        if(any(tstats==test) & marg.null == "f") stop("Choice of test stat and marginal nulldist do not match")
+        if(any(fstats==test) & (marg.null == "normal" | marg.null=="t")) stop("Choice of test stat and marginal nulldist do not match")
+        if(marg.null=="perm" & is.null(perm.mat)) stop("Must supply a matrix of permutation test statistics if marg.null='perm'")
+        if(marg.null=="f" & ncp < 0) stop("Cannot have negative noncentrality parameter with F distribution.")
+      }
+    
+      # If default (=NULL), set values of marg.par. Return as m by 1 or 2 matrix.
+      if(is.null(marg.par)){
+		marg.par <- switch(test,
+                          t.onesamp = n-1,
+                          t.twosamp.equalvar = n-2,
+                          t.twosamp.unequalvar = c(0,1),
+                          t.pair = floor(n/2-1),
+                          f = c(length(is.finite(unique(Y)))-1,dim(X)[2]- length(is.finite(unique(Y))) ),
+                          f.twoway = {
+                            c(length(is.finite(unique(Y)))-1, dim(X)[2]-(length(is.finite(unique(Y)))*length(gregexpr('12', paste(Y, collapse=""))[[1]]))-2)
+                            },
+                          lm.XvsZ = c(0,1),
+                          lm.YvsXZ = c(0,1),
+                          coxph.YvsXZ = c(0,1),
+                          t.cor = n-2,
+                          z.cor = c(0,1)
+                          )
+      marg.par <- matrix(rep(marg.par,dim(X)[1]),nr=dim(X)[1],nc=length(marg.par),byrow=TRUE)
+              }
+     else{ # Check that user-supplied values of marg.par make sense (marg.par != NULL)
+       if((marg.null=="t" | marg.null=="f") & any(marg.par[,1]==0)) stop("Cannot have zero df with t or F distributions. Check marg.par settings")
+       if(marg.null=="t" & dim(marg.par)[2]>1) stop("Too many parameters for t distribution.  marg.par should have length 1.")
+       if((marg.null=="f" | marg.null=="normal") & dim(marg.par)[2]!=2) stop("Incorrect number of parameters defining marginal null distribution.  marg.par should have length 2.")
+     }
+    }
+
     ##making a closure for the particular test
     theta0<-0
     tau0<-1
@@ -225,10 +306,26 @@ MTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="t.
                          },
                          lm.XvsZ=lmX(Z,n,psi0,na.rm,standardize,alternative,robust),
                          lm.YvsXZ=lmY(Y,Z,n,psi0,na.rm,standardize,alternative,robust),
-                         coxph.YvsXZ=coxY(Y,Z,psi0,na.rm,standardize,alternative)
-                         )
+                         coxph.YvsXZ=coxY(Y,Z,psi0,na.rm,standardize,alternative),
+                         t.cor=NULL,
+                         z.cor=NULL)
     ##computing observed test statistics
-    obs<-get.Tn(X,stat.closure,W)
+    if(test=="t.cor" | test=="z.cor") obs<-corr.Tn(X,test=test,alternative=alternative,use="pairwise")
+    else obs<-get.Tn(X,stat.closure,W)
+    ##or computing influence curves
+    if(nulldist=="ic"){
+      rawdistn <- matrix(nr=0,nc=0)
+      nulldistn<-switch(test,
+                        t.onesamp=corr.null(X,W,Y,Z,test="t.onesamp",alternative,use="pairwise",B,MVN.method,penalty,ic.quant.trans,marg.null,marg.par,perm.mat),
+                        t.pair=corr.null(X,W,Y,Z,test="t.pair",alternative,use="pairwise",B,MVN.method,penalty,ic.quant.trans,marg.null,marg.par,perm.mat),
+                        t.twosamp.equalvar=corr.null(X,W,Y,Z,test="t.twosamp.equalvar",alternative,use="pairwise",B,MVN.method,penalty,ic.quant.trans,marg.null,marg.par,perm.mat),
+                        t.twosamp.unequalvar=corr.null(X,W,Y,Z,test="t.twosamp.unequalvar",alternative,use="pairwise",B,MVN.method,penalty,ic.quant.trans,marg.null,marg.par,perm.mat),
+                        lm.XvsZ=corr.null(X,W,Y,Z,test="lm.XvsZ",alternative,use="pairwise",B,MVN.method,penalty,ic.quant.trans,marg.null,marg.par,perm.mat),
+                        lm.YvsXZ=corr.null(X,W,Y,Z,test="lm.YvsXZ",alternative,use="pairwise",B,MVN.method,penalty,ic.quant.trans,marg.null,marg.par,perm.mat),
+                        t.cor=corr.null(X,W,Y,Z,test="t.cor",alternative,use="pairwise",B,MVN.method,penalty,ic.quant.trans,marg.null,marg.par,perm.mat),
+                        z.cor=corr.null(X,W,Y,Z,test="z.cor",alternative,use="pairwise",B,MVN.method,penalty,ic.quant.trans,marg.null,marg.par,perm.mat)
+                        )
+    }
 
     ## Cluster Checking
     if ((!is.numeric(cluster))&(!inherits(cluster,c("MPIcluster", "PVMcluster", "SOCKcluster"))))
@@ -262,10 +359,15 @@ MTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="t.
       if (is.null(dispatch)) dispatch=0.05
     }
 
-    ##computing the nonparametric bootstrap null distribution
-    nulldistn<-boot.null(X,Y,stat.closure,W,B,test,theta0,tau0,alternative,seed,cluster,csnull,dispatch)
+    ##computing the nonparametric bootstrap (null) distribution
+    if(nulldist=="boot.cs" | nulldist=="boot.ctr" | nulldist=="boot.qt"){
+      nulldistn<-boot.null(X,Y,stat.closure,W,B,test,nulldist,theta0,tau0,marg.null,marg.par,ncp,perm.mat,alternative,seed,cluster,dispatch,keep.nulldist,keep.rawdist)
      if(inherits(cluster,c("MPIcluster", "PVMcluster", "SOCKcluster")))  stopCluster(cluster)
-     
+    rawdistn <- nulldistn$rawboot
+    nulldistn <- nulldistn$muboot
+    }
+
+    
     ##performing multiple testing
     #rawp values
     rawp<-apply((obs[1,]/obs[2,])<=nulldistn,1,mean)
@@ -292,7 +394,7 @@ MTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="t.
     if(method=="ss.minP") out<-ss.minP(nulldistn,obs,rawp,alternative,get.cutoff,get.cr,pind,alpha)
     if(method=="sd.maxT") out<-sd.maxT(nulldistn,obs,alternative,get.cutoff,get.cr,pind,alpha)
     if(method=="sd.minP") out<-sd.minP(nulldistn,obs,rawp,alternative,get.cutoff,get.cr,pind,alpha)
-    if(typeone=="fwer" & nalpha){
+    if(typeone=="fwer" & nalpha & (test!="t.cor" & test !="z.cor")){
       for(a in 1:nalpha) reject[,a]<-(out$adjp<=alpha[a])
     }
     #augmentation procedures
@@ -325,8 +427,25 @@ MTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="t.
     }
     #output results
     if(!keep.nulldist) nulldistn<-matrix(nr=0,nc=0)
+    if(!keep.rawdist) rawdist<-matrix(nr=0,nc=0)
+    if(nulldist!="boot.qt"){  
+      marg.null <- vector("character")
+      marg.par <- matrix(nr=0,nc=0)
+    }
+    if(!keep.label) label <- vector("numeric",0)
+    if(!keep.index) index <- matrix(nr=0,nc=0)
+    if(test!="z.cor" & test !="t.cor") index <- matrix(nr=0,nc=0)
+    if(keep.index & (test!="z.cor" | test !="t.cor")){
+      index <- t(combn(p,2))
+      colnames(index) <- c("Var1","Var2")
+    }
     names(out$adjp)<-names(rawp)
-    out<-new("MTP",statistic=sqrt(n)*(obs[3,]*obs[1,]/obs[2,]),estimate=(if(ftest) vector("numeric",0) else obs[3,]*obs[1,]),sampsize=n,rawp=rawp,adjp=out$adjp,conf.reg=out$cr,cutoff=out$c,reject=reject,nulldist=nulldistn,call=match.call(),seed=as.integer(seed))
+    out<-new("MTP",statistic=(obs[3,]*obs[1,]/obs[2,]),
+      estimate=(if(ftest) vector("numeric",0) else obs[3,]*obs[1,]),
+      sampsize=n,rawp=rawp,adjp=out$adjp,conf.reg=out$cr,cutoff=out$c,reject=reject,
+      rawdist=rawdistn,nulldist=nulldistn,nulldist.type=nulldist,
+      marg.null=marg.null,marg.par=marg.par,label=label,index=index,
+      call=match.call(),seed=as.integer(seed))
   }
   return(out)
 }
@@ -581,5 +700,3 @@ fwer2fdr<-function(adjp,method="both",alpha=0.05){
   }
   return(list(reject=rejections,adjp=newp))
 }
-
-

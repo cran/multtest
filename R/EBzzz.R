@@ -1,10 +1,8 @@
-setClass("MTP",representation(statistic="numeric",
+setClass("EBMTP",representation(statistic="numeric",
                               estimate="numeric",
                               sampsize="numeric",
                               rawp="numeric",
                               adjp="numeric",
-                              conf.reg="array",
-                              cutoff="matrix",
                               reject="matrix",
                               rawdist="matrix",
                               nulldist="matrix",
@@ -12,6 +10,14 @@ setClass("MTP",representation(statistic="numeric",
                               marg.null="character",
                               marg.par="matrix",
                               label="numeric",
+                              falsepos="matrix",
+                              truepos="matrix",
+                              errormat="matrix",  
+                              EB.h0M="numeric",
+                              prior="numeric",
+                              prior.type="character",
+                              lqv="numeric",
+                              Hsets="matrix",
                               index="matrix",
                               call="call",
                               seed="integer"),
@@ -20,8 +26,6 @@ setClass("MTP",representation(statistic="numeric",
          sampsize=vector("numeric",0),
          rawp=vector("numeric",0),
          adjp=vector("numeric",0),
-         conf.reg=array(),
-         cutoff=matrix(nr=0,nc=0),
          reject=matrix(nr=0,nc=0),
          rawdist=matrix(nr=0,nc=0),
          nulldist=matrix(nr=0,nc=0),
@@ -29,39 +33,58 @@ setClass("MTP",representation(statistic="numeric",
          marg.null=vector("character",0),
          marg.par=matrix(nr=0,nc=0),
          label=vector("numeric",0),
+         falsepos=matrix(nr=0,nc=0),
+         truepos=matrix(nr=0,nc=0),
+         errormat=matrix(nr=0,nc=0),
+         EB.h0M=vector("numeric",0),
+         prior=vector("numeric",0),
+         prior.type=vector("character",0),
+         lqv=vector("numeric",0),
+         Hsets=matrix(nr=0,nc=0),
          index=matrix(nr=0,nc=0),
          call=NULL,
          seed=vector("integer",0)))
 
+print.EBMTP<-function(x,...){
+  call.list<-as.list(x@call)
+  cat("\n")
+  writeLines(strwrap("Multiple Testing Procedure",prefix="\t"))
+  cat("\n")
+  cat(paste("Object of class: ",class(x)))
+  cat("\n")
+  cat(paste("sample size =",x@sampsize,"\n"))
+  cat(paste("number of hypotheses =",length(x@statistic),"\n"))
+  cat("\n")
+  cat(paste("test statistics =",ifelse(is.null(call.list$test),"t.twosamp.unequalvar",call.list$test),"\n"))
+  cat(paste("type I error rate =",ifelse(is.null(call.list$typeone),"fwer",call.list$typeone),"\n"))
+  nominal<-eval(call.list$alpha)
+  if(is.null(eval(call.list$alpha))) nominal<-0.05
+  cat("nominal level alpha = ")
+  cat(nominal,"\n")
+  cat(paste("multiple testing procedure =",ifelse(is.null(call.list$method),"common.cutoff",call.list$method),"\n"))
+  cat("\n")
+  cat("Call: ")
+  print(x@call)
+  cat("\n")
+  cat("Slots: \n")
+  snames<-slotNames(x)
+  n<-length(snames)
+  out<-matrix(nr=n,nc=4)
+  dimnames(out)<-list(snames,c("Class","Mode","Length","Dimension"))
+  for(s in snames) out[s,]<-c(class(slot(x,s)),mode(slot(x,s)),length(slot(x,s)),paste(dim(slot(x,s)),collapse=","))
+  out<-data.frame(out)
+  print(out)
+  invisible(x)
+}
 
-if( !isGeneric("mtp2ebmtp") )
-    setGeneric("mtp2ebmtp", function(object, ...) standardGeneric("mtp2ebmtp"))
-
-setMethod("mtp2ebmtp","MTP",
-          function(object,...){
-            y<-new("EBMTP")
-            slot(y,"statistic") <- object@statistic
-            slot(y,"estimate") <- object@estimate
-            slot(y,"sampsize") <- object@sampsize
-            slot(y,"rawp") <- object@rawp
-            slot(y,"adjp") <- object@adjp
-            slot(y,"reject") <- object@reject
-            slot(y,"rawdist") <- object@rawdist
-            slot(y,"nulldist") <- object@nulldist
-            slot(y,"nulldist.type") <- object@nulldist.type
-            slot(y,"marg.null") <- object@marg.null
-            slot(y,"marg.par") <- object@marg.par
-            slot(y,"label") <- object@label
-            slot(y,"index") <- object@index
-            slot(y,"call") <- object@call
-            slot(y,"seed") <- object@seed
-            invisible(y)
-          }
-          )
-
+### Put EBupdate last, since it is such a pain.
+### Start with the rest of the other methods, and see what
+### we want to keep/change from the MTP methods
+# plot, EBMTP currently does not return cutoffs or confidence regions, so, leave 5 and 6 from MTP
+# blank
 if( !isGeneric("plot") ) setGeneric("plot", function(x, y, ...) standardGeneric("plot"))
 
-setMethod("plot","MTP",
+setMethod("plot","EBMTP",
 	function(x,y="missing",which=1:4,caption=c("Rejections vs. Error Rate",
                                            "Ordered Adjusted p-values","Adjusted p-values vs. Statistics",
                                            "Unordered Adjusted p-values","Estimates & Confidence Regions",
@@ -69,14 +92,16 @@ setMethod("plot","MTP",
                    ask = prod(par("mfcol"))<length(which)&&dev.interactive(),
                    logscale=FALSE,top=10,...){
           call.list<-as.list(x@call)
-          if(!inherits(x,"MTP")) stop("Use only with 'MTP' objects")
-          if(is.null(which)) which<-1:6
-          if(length(caption)==1) caption<-rep(caption,6)
+          if(!inherits(x,"EBMTP")) stop("Use only with 'EBMTP' objects")
+          if(is.null(which)) which<-1:4
+          if(length(caption)==1) caption<-rep(caption,4)
           if(length(x@adjp)==0 & any(which)) stop("plot methods require adjusted p-values")
-          if(length(x@conf.reg)==0 & any(which==5)) stop("plot method 5 requires confidence regions")
-          if(length(x@cutoff)==0 & any(which==6)) stop("plot method 6 requires cut-offs")
-          if(!is.numeric(which) || any(which<1) || any(which>6)) stop("which must be in 1:6")
-          show<-rep(FALSE,6)
+          #if(length(x@conf.reg)==0 & any(which==5)) stop("plot method 5 requires confidence regions")
+          #if(length(x@cutoff)==0 & any(which==6)) stop("plot method 6 requires cut-offs")
+          #go back to MTP method if we eventually want to put these in once cut-offs and conf reg
+          #added into functionality, more for these below was deleted out. 
+          if(!is.numeric(which) || any(which<1) || any(which>4)) stop("which must be in 1:4")
+          show<-rep(FALSE,4)
           show[which]<-TRUE
           m<-length(x@adjp)
           if(top>m){
@@ -125,51 +150,25 @@ setMethod("plot","MTP",
             if(one.fig) title(sub=sub.caption,cex.sub=0.5,...)
             mtext(caption[4],3,0.25)
           }
-          if(show[5]){
-            if(is.null(call.list$test)) call.list$test<-"t.twosamp.unequalvar"
-            if(call.list$test=="f" | call.list$test=="f.block") stop("Plot 5 requires confidence intervals, which are not available with F tests")
-            topp<-ord[1:top]
-            plot(c(1,top),range(c(x@estimate[topp],x@conf.reg[topp,,]),finite=TRUE,na.rm=TRUE),type="n",xlab="Most Significant Hypotheses",ylab="Estimates")
-            points(1:top,x@estimate[topp],pch="o")
-            nominal<-eval(call.list$alpha)
-            if(is.null(nominal)) nominal<-0.05
-            for(a in 1:length(nominal)){
-              text(1:top,x@conf.reg[topp,1,a],nominal[a])
-              text(1:top,x@conf.reg[topp,2,a],nominal[a])
-            }
-            if(one.fig) title(sub=sub.caption,cex.sub=0.5,...)
-            mtext(caption[5],3,0.25)
-          }
-          if(show[6]){
-            topp<-ord[1:top]
-            alt<-call.list$alternative
-            if(is.null(alt)) alt<-"two.sided"
-            stats<-switch(alt,two.sided=abs(x@statistic),greater=x@statistic,less=(-x@statistic))
-            plot(c(1,top),range(c(x@cutoff[topp,],stats[topp]),finite=TRUE,na.rm=TRUE),type="n",xlab="Most Significant Hypotheses",ylab="Test Statistics")
-            points(1:top,stats[topp],pch="o")
-            nominal<-eval(call.list$alpha)
-            if(is.null(nominal)) nominal<-0.05
-            for(a in 1:length(nominal)) text(1:top,x@cutoff[topp,a],nominal[a])
-            if(one.fig) title(sub=sub.caption,cex.sub=0.5,...)
-            mtext(caption[6],3,0.25)
-          }
           if(!one.fig && par("oma")[3]>=1) mtext(sub.caption,outer=TRUE,cex=0.8)
           invisible()
           })
 
 
+#summary
 if( !isGeneric("summary") )
     setGeneric("summary", function(object, ...) standardGeneric("summary"))
 
-setMethod("summary","MTP",
+setMethod("summary","EBMTP",
           function(object,...){
             call.list<-as.list(object@call)
-            cat(paste("MTP: ",ifelse(is.null(call.list$method),"ss.maxT",call.list$method),"\n"))
+            #cat(paste("EBMTP: ",ifelse(is.null(call.list$method),"common.cutoff",call.list$method),"\n"))
+            cat("EBMTP: common.cutoff","\n") # always common.cutoff, even when being updated from MTP object
             err<-ifelse(is.null(call.list$typeone),"fwer",call.list$typeone)
             if(err=="gfwer") err<-paste(err," (k=",ifelse(is.null(call.list$k),0,call.list$k),")",sep="")
             if(err=="tppfp") err<-paste(err," (q=",ifelse(is.null(call.list$q),0.1,call.list$q),")",sep="")
-            if(err=="fdr") err<-paste(err," (",ifelse(is.null(call.list$fdr.method),"conservative",call.list$method),")",sep="")
-	    cat(paste("Type I error rate: ",err,"\n\n"))
+	    cat(paste("Type I error rate: ",err,"\n"))
+            cat(paste("prior: ",ifelse(is.null(call.list$prior),"conservative",call.list$prior),"\n\n"))
             nominal<-eval(call.list$alpha)
             if(is.null(nominal)) nominal<-0.05
             if(is.null(call.list$test)) test <- "t.twosamp.unequalvar"
@@ -206,7 +205,34 @@ setMethod("summary","MTP",
             invisible(list(rejections=out1,index=out2,summaries=out3))
           })
 
-setMethod("[","MTP",
+
+
+if( !isGeneric("ebmtp2mtp") )
+    setGeneric("ebmtp2mtp", function(object, ...) standardGeneric("ebmtp2mtp"))
+
+setMethod("ebmtp2mtp","EBMTP",
+          function(object,...){
+            y<-new("MTP")
+            slot(y,"statistic") <- object@statistic
+            slot(y,"estimate") <- object@estimate
+            slot(y,"sampsize") <- object@sampsize
+            slot(y,"rawp") <- object@rawp
+            slot(y,"adjp") <- object@adjp
+            slot(y,"reject") <- object@reject
+            slot(y,"rawdist") <- object@rawdist
+            slot(y,"nulldist") <- object@nulldist
+            slot(y,"nulldist.type") <- object@nulldist.type
+            slot(y,"marg.null") <- object@marg.null
+            slot(y,"marg.par") <- object@marg.par
+            slot(y,"label") <- object@label
+            slot(y,"index") <- object@index
+            slot(y,"call") <- object@call
+            slot(y,"seed") <- object@seed
+            invisible(y)
+          }
+          )
+            
+setMethod("[","EBMTP",
           function(x,i,j=NULL,...,drop=FALSE){
             if(missing(i))
             i<-TRUE
@@ -216,23 +242,21 @@ setMethod("[","MTP",
             slot(newx,"rawp")<-x@rawp[i]
             if(sum(length(x@adjp))) slot(newx,"adjp")<-x@adjp[i]
             if(sum(length(x@label))) slot(newx,"label")<-x@label[i]
-	    d<-dim(x@conf.reg)
-            dn<-dimnames(x@conf.reg)
-            if(sum(d)) slot(newx,"conf.reg")<-array(x@conf.reg[i,,],dim=c(ifelse(i[1]==TRUE & !is.numeric(i),d[1],length(i)),d[-1]),dimnames=list(dn[[1]][i],dn[[2]],dn[[3]]))
-            d<-dim(x@cutoff)
-            dn<-dimnames(x@cutoff)
-            if(sum(d)) slot(newx,"cutoff")<-matrix(x@cutoff[i,],nr=ifelse(i[1]==TRUE & !is.numeric(i),d[1],length(i)),nc=d[-1],dimnames=list(dn[[1]][i],dn[[2]]))
             d<-dim(x@reject)
             dn<-dimnames(x@reject)
             if(sum(d)) slot(newx,"reject")<-matrix(x@reject[i,],nr=ifelse(i[1]==TRUE & !is.numeric(i),d[1],length(i)),nc=d[-1],dimnames=list(dn[[1]][i],dn[[2]]))
             if(sum(dim(x@nulldist))) slot(newx,"nulldist")<-x@nulldist[i,]
-            if(sum(dim(x@rawdist))) slot(newx,"rawdist")<-x@nulldist[i,]
             if(sum(dim(x@marg.par))) slot(newx,"marg.par")<-x@marg.par[i,]
+            if(sum(dim(x@rawdist))) slot(newx,"rawdist")<-x@rawdist[i,]
+            if(sum(dim(x@falsepos))) slot(newx,"falsepos")<-x@falsepos[i,]
+            if(sum(dim(x@truepos))) slot(newx,"truepos")<-x@truepos[i,]
+            if(sum(dim(x@errormat))) slot(newx,"errormat")<-x@errormat[i,]
+            slot(newx,"lqv")<-x@lqv[i]
             if(sum(dim(x@index))) slot(newx,"index")<-x@index[i,]
 	    invisible(newx)
           })
 
-setMethod("as.list","MTP",
+setMethod("as.list","EBMTP",
           function(x,...){
             snames<-slotNames(x)
             n<-length(snames)
@@ -242,78 +266,72 @@ setMethod("as.list","MTP",
             invisible(lobj)
           })
 
-if( !isGeneric("update") )
-    setGeneric("update", function(object, ...) standardGeneric("update"))
 
-setMethod("update","MTP",
+if( !isGeneric("EBupdate") )
+    setGeneric("EBupdate", function(object, ...) standardGeneric("EBupdate"))
+
+setMethod("EBupdate","EBMTP",
           function(object,formula.="missing",alternative="two.sided",typeone="fwer",
-          k=0,q=0.1,fdr.method="conservative",alpha=0.05,smooth.null=FALSE,
-          method="ss.maxT",get.cr=FALSE,get.cutoff=FALSE,get.adjp=TRUE,nulldist="boot.cs",
-          keep.rawdist=TRUE,keep.nulldist=TRUE,marg.null=object@marg.null,
-          marg.par=object@marg.par,perm.mat=NULL,ncp=NULL,...,evaluate=TRUE){
+          k=0,q=0.1,alpha=0.05,smooth.null=FALSE,
+          method="common.cutoff",prior="conservative",bw="nrd",kernel="gaussian",
+          get.adjp=TRUE,nulldist="boot.cs",keep.rawdist=FALSE,keep.nulldist=TRUE,
+          keep.falsepos=FALSE,keep.truepos=FALSE,keep.errormat=FALSE,keep.Hsets=FALSE,
+          marg.null=object@marg.null,marg.par=object@marg.par,ncp=NULL,
+          keep.label=TRUE,...,evaluate=TRUE){
+            p <- length(object@statistic)
+            m <- length(object@statistic)
+            B <- dim(object@nulldist)[2]
+            if(sum(object@rawdist)!=0) B <- dim(object@rawdist)[2]
             ## checking
             #Error rate
             ERROR<-c("fwer","gfwer","tppfp","fdr")
             typeone<-ERROR[pmatch(typeone,ERROR)]
             if(is.na(typeone)) stop(paste("Invalid typeone, try one of ",ERROR,sep=""))
-            if(any(alpha<0) | any(alpha>1)) stop("Nominal level alpha must be between 0 and 1")
+            if(any(alpha<0) | any(alpha>1)) stop("Nominal level alpha must be between 0 and 1.")
             nalpha<-length(alpha)
-            p<-length(object@rawp)
             reject<-
-              if(nalpha) array(dim=c(p,nalpha),dimnames=list(rownames(object@reject),paste("alpha=",alpha,sep="")))
-	      else matrix(nr=0,nc=0)
+              if(nalpha) array(dim=c(p,nalpha),dimnames=list(names(object@rawp),paste("alpha=",alpha,sep="")))
+              else matrix(nr=0,nc=0)
+
+            if(typeone=="fwer"){
+              if(length(k)>1) k<-k[1]
+              if(sum(k)!=0) stop("FWER control, by definition, requires k=0.  To control k false positives, please select typeone='gfwer'.")
+            }
+     
             if(typeone=="gfwer"){
-              if(get.cr==TRUE) warning("Confidence regions not currently implemented for gFWER")
-              if(get.cutoff==TRUE) warning("Cut-offs not currently implemented for gFWER")
-              get.cr<-get.cutoff<-FALSE
-              if(k<0) stop("Number of false positives can not be negative")
-              if(k>=p) stop(paste("Number of false positives must be less than number of tests=",p,sep=""))
               if(length(k)>1){
                 k<-k[1]
-		warning("can only compute gfwer adjp for one value of k at a time (using first value), try fwer2gfwer() function for multiple k")
-		}
+                warning("Can only compute gfwer adjp for one value of k at a time (using first value). Use EBupdate() to get results for other values of k.")
+              }
+              if(k<0) stop("Number of false positives can not be negative.")
+              if(k>=p) stop(paste("Number of false positives must be less than number of tests=",p,sep=""))
             }
+
             if(typeone=="tppfp"){
-              if(get.cr==TRUE) warning("Confidence regions not currently implemented for TPPFP")
-              if(get.cutoff==TRUE) warning("Cut-offs not currently implemented for TPPFP")
-              get.cr<-get.cutoff<-FALSE
-              if(q<0) stop("Proportion of false positives, q, can not be negative")
-              if(q>1) stop("Proportion of false positives, q, must be less than 1")
               if(length(q)>1){
                 q<-q[1]
-                warning("Can only compute tppfp adjp for one value of q at a time (using first value), try fwer2tppfp() function for multiple q")
+                warning("Can only compute tppfp adjp for one value of q at a time (using first value). Use EBupdate() to get results for other values of q.")
               }
+              if(q<0) stop("Proportion of false positives, q, can not be negative.")
+              if(q>1) stop("Proportion of false positives, q, must be less than 1.")
             }
-            if(typeone=="fdr"){
-              if(!nalpha) stop("Must specify a nominal level alpha for control of FDR")
-              if(get.cr==TRUE) warning("Confidence regions not currently implemented for FDR")
-              if(get.cutoff==TRUE) warning("Cut-offs not currently implemented for FDR")
-              get.cr<-get.cutoff<-FALSE
-            }
-
-            METHODS<-c("ss.maxT","ss.minP","sd.maxT","sd.minP")
+            
+            #methods
+            METHODS<-c("common.cutoff","common.quantile")
             method<-METHODS[pmatch(method,METHODS)]
-            if(is.na(method)) stop(paste("Invalid method, try one of ",METHODS," ",sep=""))
+            if(is.na(method)) stop(paste("Invalid method, try one of ",METHODS,sep=""))
+            if(method=="common.quantile") stop("Common quantile procedure not currently implemented.  Common cutoff is pretty good, though.")
+            
+            #prior
+            PRIORS<-c("conservative","ABH","EBLQV")
+            prior<-PRIORS[pmatch(prior,PRIORS)]
+            if(is.na(prior)) stop(paste("Invalid prior, try one of ",PRIORS,sep=""))
 
             #get args from previous call
-            call.list <- as.list(object@call)
-            #estimate and conf.reg
-            ftest<-FALSE
+            call.list<-as.list(object@call)
+
             if(is.null(call.list$test)) test<-"t.twosamp.unequalvar" #default
             else test<-call.list$test
-            if(test%in%c("f","f.block","f.twoway")){
-              ftest<-TRUE
-              if(get.cr) stop("Confidence intervals not available for F tests, try get.cr=FALSE")
-            }
-            
-            #alternative
-            #if(is.null(call.list$alternative)) alternative<-"two.sided"
-            #else alternative<-call.list$alternative
-
-            #typeone
-            #if(is.null(call.list$typeone)) typeone<-"fwer"
-            #else typeone<-call.list$typeone
-            
             ### nulldistn
             ### Preserve the old null dist, if kept (i.e., could have alternatively kept raw dist)
             nulldistn <- object@nulldist
@@ -328,23 +346,23 @@ setMethod("update","MTP",
                if(is.null(call.list$nulldist)) "boot.cs"
                else call.list$nulldist
 
-            ## new call
-            newcall.list<-as.list(match.call())
-            changed<-names(call.list)[names(call.list)%in%names(newcall.list)]
-            changed<-changed[changed!=""]
-            added<-names(newcall.list)[!(names(newcall.list)%in%names(call.list))]
-            added<-added[added!="x"]
-            for(n in changed) call.list[[n]]<-newcall.list[[n]]
-            for(n in added) call.list[[n]]<-newcall.list[[n]]
-            newcall<-as.call(call.list)
-            ### NB can still use "call.list" to help with what has been changed.
-            df <- marg.par
-            call.list$marg.par <- df
+         ## new call
+               newcall.list<-as.list(match.call())
+               changed<-names(call.list)[names(call.list)%in%names(newcall.list)]
+               changed<-changed[changed!=""]
+               added<-names(newcall.list)[!(names(newcall.list)%in%names(call.list))]
+               added<-added[added!="x"]
+               for(n in changed) call.list[[n]]<-newcall.list[[n]]
+               for(n in added) call.list[[n]]<-newcall.list[[n]]
+               newcall<-as.call(call.list)
+               ### NB can still use "call.list" to help with what has been changed.
+               df <- marg.par
+               call.list$marg.par <- df
                
-            ## return call if evaluate is false
-            if(!evaluate) return(newcall)
+         ## return call if evaluate is false
+               if(!evaluate) return(newcall)
 
-            ## else redo MTP
+         ## else redo MTP
             else{
               num<-object@estimate
               snum<-1
@@ -361,15 +379,7 @@ setMethod("update","MTP",
                 marg.null = vector("character",length=0)
                 marg.par = matrix(nr=0,nc=0)
               }
-                 
-         ### Move rawp down from before.
-         ### Redoing the new null distributions needs to go here.
-              if("method" %in% changed | "method" %in% added) method <- call.list$method
               if("alternative" %in% changed | "alternative" %in% added) alternative <- call.list$alternative
-              
-         ### Preserve the old null dist, if kept (i.e., could have alternatively kept raw dist)
-              nulldistn <- object@nulldist
-
               if("marg.null" %in% changed | "marg.null" %in% added) marg.null <- call.list$marg.null
               if("marg.par" %in% changed | "marg.par" %in% added){
                   marg.par <- call.list$marg.par
@@ -377,7 +387,7 @@ setMethod("update","MTP",
                 }
               if("perm.mat" %in% changed | "perm.mat" %in% added) perm.mat <- call.list$perm.mat
               if("ncp" %in% changed | "ncp" %in% added) ncp <- call.list$ncp
-              if("MVN.method" %in% changed | "MVN.method" %in% added | "penalty" %in% changed | "penalty" %in% added |"ic.quant.trans" %in% changed | "ic.quant.trans" %in% added) stop("Changing 'MVN.method', 'ic.quant.trans' or 'penalty' requires new calculation of null distribution using nulldist='ic'.  Please use a new call to MTP.")
+              if("MVN.method" %in% changed | "MVN.method" %in% added | "penalty" %in% changed | "penalty" %in% added |"ic.quant.trans" %in% changed | "ic.quant.trans" %in% added) stop("Changing 'MVN.method', 'ic.quant.trans' or 'penalty' requires new calculation of null distribution using nulldist='ic'.  Please use a new call to EBMTP.")
          ### Check value of nulldist in this case
               if("nulldist" %in% changed | "nulldist" %in% added) {
                 nulldist <- call.list$nulldist
@@ -386,7 +396,6 @@ setMethod("update","MTP",
                 if(object@nulldist.type=="ic") stop("You cannot update an influence curve null distribution to another choice of null distribution.  Valid only for changes in the bootstrap distribution when keep.rawdist=TRUE.  Please try a separate call to MTP() if nulldist='boot' or 'perm' desired. Changing 'MVN.method', 'ic.quant.trans' or 'penalty' also requires new calculation of null distribution using nulldist='ic'")
                 if(nulldist=="ic") stop("Calls to update() cannot include changes involving the influence curve null distribution. Please try a separate call to MTP() with nulldist='ic'")
                 if(!ncol(object@rawdist)) stop("Calls to update() involving changes in bootstrap-based null distributions require keep.rawdist=TRUE")
-              
 
     ### Just recompute (bootstrap-based) nulldistn - way easier this way (with keep.raw=TRUE)
     ### "Easy" ones first.  Need to get tau0 and theta0.
@@ -394,6 +403,7 @@ setMethod("update","MTP",
                 marg.null = vector("character",length=0)
                 marg.par = matrix(nr=0,nc=0)
               }
+                
               if(nulldist=="boot" | nulldist=="boot.cs" | nulldist=="boot.ctr"){
                 marg.null = vector("character",length=0)
                 marg.par = matrix(nr=0,nc=0)
@@ -477,216 +487,132 @@ setMethod("update","MTP",
               }
               }
 
-     ### Cool. Now pick up where we left off.
-         obs<-rbind(num,object@estimate/object@statistic,sign(object@estimate))
-         rawp<-apply((obs[1,]/obs[2,])<=nulldistn,1,mean)
+              ### Cool. Now pick up where we left off.
+              ##performing multiple testing
+              #rawp values
+              obs<-rbind(num,object@estimate/object@statistic,sign(object@estimate))
+              rawp<-apply((obs[1,]/obs[2,])<=nulldistn,1,mean)
 		     if(smooth.null & min(rawp,na.rm=TRUE)==0){
-                  zeros<-rawp==0
-                  if(sum(zeros)==1){
-                    den<-density(nulldistn[zeros,],to=max(obs[1,zeros]/obs[2,zeros],nulldistn[zeros,],na.rm=TRUE),na.rm=TRUE)
-                    rawp[zeros]<-sum(den$y[den$x>=(obs[1,zeros]/obs[2,zeros])])/sum(den$y)
-                  }
-                  else{
-                    den<-apply(nulldistn[zeros,],1,density,to=max(obs[1,zeros]/obs[2,zeros],nulldistn[zeros,],na.rm=TRUE),na.rm=TRUE)
-                    newp<-NULL
-                    stats<-obs[1,zeros]/obs[2,zeros]
-                    for(i in 1:length(den)) newp[i]<-sum(den[[i]]$y[den[[i]]$x>=stats[i]])/sum(den[[i]]$y)
-                    rawp[zeros]<-newp
-                  }
-                  rawp[rawp<0]<-0
-                }
-		pind<-ifelse(typeone!="fwer",TRUE,get.adjp)
-		if(method=="ss.maxT") out<-ss.maxT(nulldistn,obs,alternative,get.cutoff,get.cr,pind,alpha)
-		if(method=="ss.minP") out<-ss.minP(nulldistn,obs,rawp,alternative,get.cutoff,get.cr,pind,alpha)
-                if(method=="sd.maxT") out<-sd.maxT(nulldistn,obs,alternative,get.cutoff,get.cr,pind,alpha)
-                if(method=="sd.minP") out<-sd.minP(nulldistn,obs,rawp,alternative,get.cutoff,get.cr,pind,alpha)
-                if(typeone=="fwer" & nalpha){
-                  for(a in 1:nalpha) reject[,a]<-(out$adjp<=alpha[a])
-		}
-		#augmentation procedures
-                #cat(typeone,"\n")
-                #cat(k,"\n")
-		if(typeone=="gfwer"){
-                  out$adjp<-as.numeric(fwer2gfwer(out$adjp,k))
-                  out$c<-matrix(nr=0,nc=0)
-                  out$cr<-array(dim=c(0,0,0))
-                  if(nalpha){
-                    for(a in 1:nalpha) reject[,a]<-(out$adjp<=alpha[a])
-		  }
-                  if(!get.adjp) out$adjp<-vector("numeric",0)
-                }
-		if(typeone=="tppfp"){
-                  out$adjp<-as.numeric(fwer2tppfp(out$adjp,q))
-                  out$c<-matrix(nr=0,nc=0)
-                  out$cr<-array(dim=c(0,0,0))
-                  if(nalpha){
-                    for(a in 1:nalpha) reject[,a]<-(out$adjp<=alpha[a])
-                  }
-                  if(!get.adjp) out$adjp<-vector("numeric",0)
-		}
-		if(typeone=="fdr"){
-                  out$c<-matrix(nr=0,nc=0)
-                  out$cr<-array(dim=c(0,0,0))
-                  temp<-fwer2fdr(out$adjp,fdr.method,alpha)
-                  reject<-temp$reject
-                  if(!get.adjp) out$adjp<-vector("numeric",0)
-                  else out$adjp<-temp$adjp
-                  rm(temp)
-                }
-		#output results
-  if(!keep.nulldist) nulldistn <-matrix(nr=0,nc=0)
-  if(keep.rawdist==FALSE) object@rawdist<-matrix(nr=0,nc=0)
-                out<-new("MTP",statistic=object@statistic,estimate=object@estimate,
-                sampsize=object@sampsize,rawp=rawp,adjp=out$adjp,conf.reg=out$cr,
-                cutoff=out$c,reject=reject,rawdist=object@rawdist,nulldist=nulldistn,
+                       zeros<-rawp==0
+                       if(sum(zeros)==1){
+                         den<-density(nulldistn[zeros,],to=max(obs[1,zeros]/obs[2,zeros],nulldistn[zeros,],na.rm=TRUE),na.rm=TRUE)
+                         rawp[zeros]<-sum(den$y[den$x>=(obs[1,zeros]/obs[2,zeros])])/sum(den$y)
+                       }
+                       else{
+                         den<-apply(nulldistn[zeros,],1,density,to=max(obs[1,zeros]/obs[2,zeros],nulldistn[zeros,],na.rm=TRUE),na.rm=TRUE)
+                         newp<-NULL
+                         stats<-obs[1,zeros]/obs[2,zeros]
+                         for(i in 1:length(den)) newp[i]<-sum(den[[i]]$y[den[[i]]$x>=stats[i]])/sum(den[[i]]$y)
+                         rawp[zeros]<-newp
+                       }
+                       rawp[rawp<0]<-0
+                     }
+
+              #c, cr, adjp - this is where the function gets a lot different from MTP.
+              ### Begin nuts and bolts of EB here.
+t
+              ### Set G function of type I error rates
+              error.closure <- switch(typeone, fwer=G.VS(V,S=NULL,tp=TRUE,bound=0),
+                                      gfwer=G.VS(V,S=NULL,tp=TRUE,bound=k),
+                                      tppfp=G.VS(V,S,tp=TRUE,bound=q),
+                                      fdr=G.VS(V,S,tp=FALSE,bound=NULL)
+                                      )
+
+              ### Generate guessed sets of true null hypotheses
+              ### This function relates null and full densities.  Sidedness should be accounted for above.
+              statistic <- (obs[3,]*obs[1,]/obs[2,]) #observed, with sign
+              Tn <- obs[1,]/obs[2,]  # for sidedness, matching with mulldistn
+              
+              H0.sets <- Hsets(Tn, nullmat=nulldistn, bw, kernel, prior=prior, B=dim(object@nulldist)[2], rawp=object@rawp) 
+              EB.h0M <- H0.sets$EB.h0M
+              prior.type <- prior
+              prior.val <- H0.sets$prior
+              lqv <- H0.sets$pn.out
+              H0.sets <- H0.sets$Hsets.mat
+              
+              m <- length(Tn)
+              ### B defined in global environment
+              ### For adjusted p-values, just sort now and be able to get the index.
+              ### We want to sort the test statistics in terms of their evidence against the null
+              ### i.e., from largest to smallest.
+              ord.Tn <- order(Tn,decreasing=TRUE)
+              sort.Tn <- Tn[ord.Tn]
+              Z.nulls <- nulldistn[ord.Tn,]*H0.sets[ord.Tn,]
+              Tn.mat <- (1-H0.sets[ord.Tn,])*matrix(rep(sort.Tn,B),nr=m,nc=B)
+
+              ### Rather than using a sieve of candidate cutoffs, for adjp, test statistics
+              ### are used as cutoffs themselves.
+              cutoffs <- sort.Tn
+              clen <- m
+              cat("counting guessed false positives...", "\n")
+              Vn <- object
+              Vn <- .Call(VScount,as.numeric(Z.nulls),as.numeric(cutoffs),as.integer(m),
+                as.integer(B),as.integer(clen),NAOK=TRUE)
+              cat("\n")
+              Vn <- matrix(Vn, nr=clen, nc=B)
+              
+              if(typeone=="fwer" | typeone=="gfwer") Sn <- NULL
+              else{
+                cat("counting guessed true positives...", "\n")
+                Sn <- .Call(VScount,as.numeric(Tn.mat),as.numeric(cutoffs),as.integer(m),
+                  as.integer(B),as.integer(clen),NOAK=TRUE)
+                cat("\n")
+                Sn <- matrix(Sn, nr=clen, nc=B)
+              }
+
+              G <-  error.closure(Vn,Sn)
+              Gmeans <- rowSums(G,na.rm=TRUE)/B
+
+              ### Now get adjps and rejection indicators.
+              adjp <- rep(0,m)
+              for(i in 1:m){
+                adjp[i] <- min(Gmeans[i:m])
+              }
+
+              ### Now reverse order to go back to original order of test statistics.
+              rev.order <- rep(0,m)
+              for(i in 1:m){
+                rev.order[i] <- which(sort.Tn==Tn[i])
+              }
+              adjp <- adjp[rev.order]
+              if(keep.falsepos) Vn <- Vn[rev.order,]
+              else Vn <- matrix(0,nr=0,nc=0)
+              if(keep.truepos) Sn <- Sn[rev.order,]
+              else Sn <- matrix(0,nr=0,nc=0)
+              if(keep.errormat) G <- G[rev.order,]
+              else G <- matrix(0,nr=0,nc=0)
+              if(!keep.Hsets) H0.sets <- matrix(0,nr=0,nc=0)
+              
+              # No confidence regions, but vector of rejections logicals, and cutoff, if applicable
+              ### Generate matrix of rejection logicals.
+              EB.reject <- matrix(rep(0,m),nr=m,nc=length(alpha))
+              dimnames(EB.reject) <- list(rownames(object@nulldist),paste("alpha", alpha, sep=""))
+              if(nalpha) for(a in 1:nalpha) EB.reject[,a]<-adjp<=alpha[a]
+              else EB.reject <- matrix(0,nr=0,nc=0)
+
+              ### Grab test statistics corresponding to cutoff, based on adjp.
+              #Leave out.
+              #cutoff <- rep(0,nalpha)
+              #for(a in 1:nalpha){
+              #  if(sum(adjp<=alpha[a])>0){
+              #   temp <- max(adjp[adjp<=alpha[a]])
+              #   cutoff.ind <- which(adjp==temp)
+              #   cutoff[a] <- max(Tn[cutoff.ind])
+              # }
+              #  else cutoff[a] <- NA
+              #}
+
+              #output results
+              if(!keep.nulldist) nulldistn <-matrix(nr=0,nc=0)
+              if(keep.rawdist==FALSE) object@rawdist<-matrix(nr=0,nc=0)
+                out<-new("EBMTP",statistic=object@statistic,estimate=object@estimate,
+                sampsize=object@sampsize,rawp=rawp,adjp=adjp,
+                reject=EB.reject,rawdist=object@rawdist,nulldist=nulldistn,
                 nulldist.type=nulldist,marg.null=marg.null,marg.par=marg.par,label=object@label,
+                falsepos=Vn,truepos=Sn,errormat=G,Hsets=H0.sets,EB.h0M=EB.h0M,
+                prior=prior.val,prior.type=prior.type,lqv=lqv,
                 index=object@index,call=newcall,seed=object@seed)
 		return(out)
                } #re else redo MTP
              } # re function
              ) # re set method
-             
-###  
-
-
-print.MTP<-function(x,...){
-  call.list<-as.list(x@call)
-  cat("\n")
-  writeLines(strwrap("Multiple Testing Procedure",prefix="\t"))
-  cat("\n")
-  cat(paste("Object of class: ",class(x)))
-  cat("\n")
-  cat(paste("sample size =",x@sampsize,"\n"))
-  cat(paste("number of hypotheses =",length(x@statistic),"\n"))
-  cat("\n")
-  cat(paste("test statistics =",ifelse(is.null(call.list$test),"t.twosamp.unequalvar",call.list$test),"\n"))
-  cat(paste("type I error rate =",ifelse(is.null(call.list$typeone),"fwer",call.list$typeone),"\n"))
-  nominal<-eval(call.list$alpha)
-  if(is.null(eval(call.list$alpha))) nominal<-0.05
-  cat("nominal level alpha = ")
-  cat(nominal,"\n")
-  cat(paste("multiple testing procedure =",ifelse(is.null(call.list$method),"ss.maxT",call.list$method),"\n"))
-  cat("\n")
-  cat("Call: ")
-  print(x@call)
-  cat("\n")
-  cat("Slots: \n")
-  snames<-slotNames(x)
-  n<-length(snames)
-  out<-matrix(nr=n,nc=4)
-  dimnames(out)<-list(snames,c("Class","Mode","Length","Dimension"))
-  for(s in snames) out[s,]<-c(class(slot(x,s)),mode(slot(x,s)),length(slot(x,s)),paste(dim(slot(x,s)),collapse=","))
-  out<-data.frame(out)
-  print(out)
-  invisible(x)
-}
-
-.onLoad <- function(lib, pkg) require(methods)
-
-.onUnload <- function( libpath ) {
-  library.dynam.unload( "multtest", libpath )
-}
-
-#apply function with a weight matrix/vector
-#written copying apply, except that X must
-# be a matrix and MARGIN must be 1 or 2.
-# W is NULL, matrix or vector.
-
-wapply<-function(X,MARGIN,FUN,W=NULL,...){
-  if(is.null(W)) return(apply(X,MARGIN,FUN,...))
-  else{
-    if(length(MARGIN)!=1) stop("length(MARGIN) should be 1")
-    if(!(MARGIN==1 || MARGIN==2)) stop("MARGIN must be 1 or 2")
-    FUN<-match.fun(FUN)
-    X<-as.matrix(X)
-    dx<-dim(X)
-    if(length(dx)!=2) stop("X must be a matrix")
-    dn<-dimnames(X)
-    if(!(is.vector(W) | is.matrix(W))) stop("W must be a vector or matrix")
-    if(is.vector(W)){
-      if(MARGIN==1 & length(W)!=dx[2]) stop("length(W) not equal to ",dx[2])
-      if(MARGIN==2 & length(W)!=dx[1]) stop("length(W) not equal to ",dx[1])
-    }
-    if(is.matrix(W) & sum(dx!=dim(W))>0) stop("X and W must have the same dimension(s)")
-    d.call<-dx[-MARGIN]
-    d.ans<-dx[MARGIN]
-    dn.call<-dn[-MARGIN]
-    dn.ans<-dn[MARGIN]
-    if(is.na(d.ans) || !(d.ans>0)) stop("dim(X)[",MARGIN,"] is not a positive number")
-    if(MARGIN==1){
-      X<-t(X)
-      if(is.matrix(W)) W<-t(W)
-    }
-    ans<-vector("list",d.ans)
-    if(length(dn.call)) dimnames(X)<-c(dn.call,list(NULL))
-    for(i in 1:d.ans){
-      if(is.vector(W)) ans[[i]]<-FUN(X[,i]*W,...)
-      else ans[[i]]<-FUN(X[,i]*W[,i],...)
-    }
-    ans.list<-is.recursive(ans[[1]])
-    l.ans<-length(ans[[1]])
-    ans.names<-names(ans[[1]])
-    if(!ans.list) ans.list<-any(unlist(lapply(ans,length))!=l.ans)
-    if(!ans.list && length(ans.names)){
-      all.same<-sapply(ans,function(x) identical(names(x),ans.names))
-      if(!all(all.same)) ans.names<-NULL
-    }
-    len.a<-
-      if(ans.list) d.ans
-      else length(ans<-unlist(ans,recursive=FALSE))
-    if(len.a==d.ans){
-      names(ans)<-if(length(dn.ans[[1]])) dn.ans[[1]]
-      return(ans)
-    }
-    if(len.a>0 && len.a%%d.ans==0) return(array(ans,c(len.a%/%d.ans,d.ans),
-                           if(is.null(dn.ans)){
-                             if(!is.null(ans.names)) list(ans.names,NULL)
-                           }
-                           else c(list(ans.names),dn.ans)))
-    return(ans)
-  }
-}
-
-#function to make a vector for ordering the results by
-# adjp, then rawp, then abs(stat)
-get.index<-function(adjp,rawp,stat){
-  adj<-!is.null(adjp)
-  raw<-!is.null(rawp)
-  sta<-!is.null(stat)
-  if(adj) p<-length(adjp)
-  else{
-    if(raw) p<-length(rawp)
-    else stop("Must have at least one argument")
-  }
-  if(!sta) stat<-rep(1,p)
-  if(!raw) rawp<-rep(1,p)
-  if(!adj) adjp<-rep(1,p)
-  if((length(adjp)!=length(rawp)) | (length(adjp)!=length(stat))) stop("adjp, rawp, and stat must all be the same length")
-  index<-rank(adjp)
-  d1<-duplicated(index)
-  u1<-u2<-NULL
-  if(sum(d1)){
-    u1<-unique(index[d1])
-    for(u in u1){
-      sub<-index==u
-      i2<-rank(rawp[sub])
-      index[sub]<-index[sub]+i2-mean(i2)
-      d2<-duplicated(index[sub])
-      if(sum(d2)) u2<-unique(index[sub][d2])
-      for(uu in u2){
-        sub2<-index==uu
-	i3<-length(stat[sub2])-rank(abs(stat[sub2]))+1
-	index[sub2]<-index[sub2]+i3-mean(i3)
-      }
-    }
-  }
-  if(sum(duplicated(index))) warning("indices are not unique")
-  if(sum(index)!=sum(1:length(index))) warning("indices are not based on true ranks")
-  order(index)
-}
-
-qRequire <- function(pkg){
-   suppressWarnings(require(pkg, character.only=TRUE, quietly=TRUE, warn.conflicts=FALSE))
-}
-
-

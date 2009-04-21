@@ -17,26 +17,38 @@ new('MTP', \cr
 	conf.reg  = ...., object of class array\cr
         cutoff    = ...., object of class matrix\cr
  	reject	  = ...., object of class matrix\cr
+	rawdist	  = ...., object of class matrix\cr
         nulldist  = ...., object of class matrix\cr
+	nulldist.type = ...., object of class character\cr
+	marg.null = ...., object of class character\cr
+	marg.par  = ...., object of class matrix\cr
+	label	  = ...., object of class numeric\cr
+	index	  = ...., object of class matrix\cr
         call      = ...., object of class call\cr
         seed      = ...., object of class integer\cr
        )
 }
 
 \section{Slots}{
-  \describe{
-    \item{\code{statistic}:}{Object of class \code{numeric}, observed test statistics for each hypothesis, specified by the values of the \code{MTP} arguments \code{test}, \code{robust}, \code{standardize}, and \code{psi0}.}
-    \item{\code{estimate}:}{For the test of single-parameter null hypotheses using t-statistics (i.e., not the F-tests), the numeric vector of estimated parameters corresponding to each hypothesis, e.g. means, differences in means, regression parameters.}
-    \item{\code{sampsize}:}{Object of class \code{numeric}, number of columns (i.e. observations) in the input data set.}
-    \item{\code{rawp}:}{Object of class \code{numeric}, unadjusted, marginal p-values for each hypothesis.}
-    \item{\code{adjp}:}{Object of class \code{numeric}, adjusted (for multiple testing) p-values for each hypothesis (computed only if the \code{get.adjp} argument is TRUE).}
-    \item{\code{conf.reg}:}{For the test of single-parameter null hypotheses using t-statistics (i.e., not the F-tests), the numeric array of lower and upper simultaneous confidence limits for the parameter vector, for each value of the nominal Type I error rate \code{alpha} (computed only if the \code{get.cr} argument is TRUE).}
-    \item{\code{cutoff}:}{The numeric matrix of cut-offs for the vector of test statistics for each value of the nominal Type I error rate \code{alpha} (computed only if the \code{get.cutoff} argument is TRUE).}
-   \item{\code{reject}:}{Object of class \code{matrix}, rejection indicators (TRUE for a rejected null hypothesis), for each value of the nominal Type I error rate \code{alpha}.}
-    \item{\code{nulldist}:}{The numeric matrix for the estimated test statistics null distribution (returned only if \code{keep.nulldist=TRUE}; option not currently available for permutation null distribution, i.e.,  \code{nulldist="perm"}). By default (i.e., for \code{nulldist="boot"}), the entries of \code{nulldist} are the null value shifted and scaled bootstrap test statistics, with one null test statistic value for each hypothesis (rows) and bootstrap iteration (columns).}
-   \item{\code{call}:}{Object of class \code{call}, the call to the MTP function.}
-    \item{\code{seed}:}{An integer for specifying the state of the random number generator used to create the resampled datasets. The seed can be reused for reproducibility in a repeat call to \code{MTP}. This argument is currently used only for the bootstrap null distribution (i.e., for \code{nulldist="boot"}). See \code{? set.seed} for details.}
-  }
+\describe{
+  \item{\code{statistic}}{Object of class \code{numeric}, observed test statistics for each hypothesis, specified by the values of the \code{MTP} arguments \code{test}, \code{robust}, \code{standardize}, and \code{psi0}.}
+    \item{\code{estimate}}{For the test of single-parameter null hypotheses using t-statistics (i.e., not the F-tests), the numeric vector of estimated parameters corresponding to each hypothesis, e.g. means, differences in means, regression parameters.}
+    \item{\code{sampsize}}{Object of class \code{numeric}, number of columns (i.e. observations) in the input data set.}
+    \item{\code{rawp}}{Object of class \code{numeric}, unadjusted, marginal p-values for each hypothesis.}
+    \item{\code{adjp}}{Object of class \code{numeric}, adjusted (for multiple testing) p-values for each hypothesis (computed only if the \code{get.adjp} argument is TRUE).}
+    \item{\code{conf.reg}}{For the test of single-parameter null hypotheses using t-statistics (i.e., not the F-tests), the numeric array of lower and upper simultaneous confidence limits for the parameter vector, for each value of the nominal Type I error rate \code{alpha} (computed only if the \code{get.cr} argument is TRUE).}
+    \item{\code{cutoff}}{The numeric matrix of cut-offs for the vector of test statistics for each value of the nominal Type I error rate \code{alpha} (computed only if the \code{get.cutoff} argument is TRUE).}
+   \item{\code{reject}}{Object of class \code{'matrix'}, rejection indicators (TRUE for a rejected null hypothesis), for each value of the nominal Type I error rate \code{alpha}.}
+    \item{\code{rawdist}}{The numeric matrix for the estimated nonparametric non-null test statistics distribution (returned only if \code{keep.rawdist=TRUE} and if \code{nulldist} is one of 'boot.ctr', 'boot.cs', or 'boot.qt'). This slot must not be empty if one wishes to call \code{update} to change choice of bootstrap-based null distribution.}
+    \item{\code{nulldist}}{The numeric matrix for the estimated test statistics null distribution (returned only if \code{keep.nulldist=TRUE}); option not currently available for permutation null distribution, i.e.,  \code{nulldist='perm'}). By default (i.e., for \code{nulldist='boot.cs'}), the entries of \code{nulldist} are the null value shifted and scaled bootstrap test statistics, with one null test statistic value for each hypothesis (rows) and bootstrap iteration (columns).}
+    \item{\code{nulldist.type}}{Character value describing which choice of null distribution was used to generate the MTP results.  Takes on one of the values of the original \code{nulldist} argument in the call to MTP, i.e., 'boot.cs', 'boot.ctr', 'boot.qt', 'ic', or 'perm'.}
+   \item{\code{marg.null}}{If \code{nulldist='boot.qt'}, a character value returning which choice of marginal null distribution was used by the MTP.  Can be used to check default values or to ensure manual settings were correctly applied.}
+   \item{\code{marg.par}}{If \code{nulldist='boot.qt'}, a numeric matrix returning the parameters of the marginal null distribution(s) used by the MTP.  Can be used to check default values or to ensure manual settings were correctly applied.}
+   \item{\code{label}}{If \code{keep.label=TRUE}, a vector storing the values used in the argument \code{Y}.  Storing this object is particularly important when one wishes to update MTP objects with F-statistics using default \code{marg.null} and \code{marg.par} settings when \code{nulldist='boot.qt'}. }
+   \item{\code{index}}{For tests of correlation parameters a matrix corresponding to \code{t(combn(p,2))}, where \code{p} is the number of variables in \code{X}.  This matrix gives the indices of the variables considered in each pairwise correlation.  For all other tests, this slot is empty, as the indices are in the same order as the rows of \code{X}.}
+   \item{\code{call}}{Object of class \code{call}, the call to the MTP function.}
+    \item{\code{seed}}{An integer or vector for specifying the state of the random number generator used to create the resampled datasets. The seed can be reused for reproducibility in a repeat call to \code{MTP}. This argument is currently used only for the bootstrap null distribution (i.e., for \code{nulldist="boot.xx"}). See \code{?set.seed} for details.}
+	}
 }
 
 \section{Methods}{
@@ -74,9 +86,17 @@ In addition, this method produces a table with the class, mode, length, and dime
 2. index: A numeric vector of indices for ordering the hypotheses according to first \code{adjp}, then \code{rawp}, and finally the absolute value of \code{statistic} (not printed in the summary). \cr 
 
 3. summaries: When applicable (i.e., when the corresponding quantities are returned by \code{MTP}), a table with six number summaries of the distributions of the adjusted p-values, unadjusted p-values, test statistics, and parameter estimates.}
-    \item{update}{: update method for \code{MTP} class, provides a mechanism to re-run the MTP with different choices of the following arguments - alternative, typeone, k, q, fdr.method, alpha, smooth.null, method, get.cr, get.cutoff, get.adjp, keep.nulldist. When evaluate is 'TRUE', a new object of class MTP is returned. Else, the updated call is returned. The \code{MTP} object passed to the update method must have a non-empty nulldist slot (ie: must have been called with 'keep.nulldist=TRUE').} 
+
+    \item{update}{: update method for \code{MTP} class, provides a mechanism to re-run the MTP with different choices of the following arguments - nulldist, alternative, typeone, k, q, fdr.method, alpha, smooth.null, method, get.cr, get.cutoff, get.adjp, keep.nulldist, keep.rawdist, keep.margpar. When evaluate is 'TRUE', a new object of class MTP is returned. Else, the updated call is returned. The \code{MTP} object passed to the update method must have either a  non-empty \code{rawdist} slot or a non-empty \code{nulldist} slot (i.e., must have been called with either 'keep.rawdist=TRUE' or 'keep.nulldist=TRUE').\cr 
+
+To save on memory, if one knows ahead of time that one will want to compare different choices of bootstrap-based null distribution, then it is both necessary and sufficient to specify 'keep.rawdist=TRUE', as there is no other means of moving between null distributions other than through the non-transformed non-parametric bootstrap distribution.  In this case, 'keep.nulldist=FALSE' may be used.  Specifically, if an object of class \code{MTP} contains a non-empty \code{rawdist} slot and an empty \code{nulldist} slot, then a new null distribution will be generated according to the values of the \code{nulldist=} argument in the original call to \code{MTP} or any additional specifications in the call to \code{update}. On the other hand, if one knows that one wishes to only update an \code{MTP} object in ways which do not involve choice of null distribution, then 'keep.nulldist=TRUE' will suffice and 'keep.rawdist' can be set to \code{FALSE} (default settings).  The original null distribution object will then be used for all subsequent calls to \code{update}. \cr
+
+N.B.: Note that \code{keep.rawdist=TRUE} is only available for the bootstrap-based resampling methods.  The non-null distribution does not exist for the permutation or influence curve multivariate normal null distributions. }
+
+    \item{mtp2ebmtp}{: coersion method for converting objects of class \code{MTP} to objects of class \code{EBMTP}.  Slots common to both objects are taken from the object of class \code{MTP} and used to create a new object of class \code{EBMTP}.  Once an object of class \code{EBMTP} is created, one may use the method \code{EBupdate} to perform resampling-based empirical Bayes multiple testing without the need for repeated resampling.}
 }
 }
+
 
 \references{
 M.J. van der Laan, S. Dudoit, K.S. Pollard (2004), Augmentation Procedures for Control of the Generalized Family-Wise Error Rate and Tail Probabilities for the Proportion of False Positives, Statistical Applications in Genetics and Molecular Biology, 3(1). 
@@ -90,11 +110,19 @@ S. Dudoit, M.J. van der Laan, K.S. Pollard (2004), Multiple Testing. Part I. Sin
 
 Katherine S. Pollard and Mark J. van der Laan, "Resampling-based Multiple Testing: Asymptotic Control of Type I Error and Applications to Gene Expression Data" (June 24, 2003). U.C. Berkeley Division of Biostatistics Working Paper Series. Working Paper 121.
 \url{http://www.bepress.com/ucbbiostat/paper121}
+
+M.J. van der Laan and A.E. Hubbard (2006), Quantile-function Based Null Distributions in Resampling Based Multiple Testing, Statistical Applications in Genetics and Molecular Biology, 5(1).
+\url{http://www.bepress.com/sagmb/vol5/iss1/art14/}
+
+S. Dudoit and M.J. van der Laan.  Multiple Testing Procedures and Applications to Genomics.  Springer Series in Statistics. Springer, New York, 2008.
 }
 
-\author{Katherine S. Pollard with design contributions from Sandrine Dudoit and Mark J. van der Laan.}
+\author{Katherine S. Pollard  and Houston N. Gilbert with design contributions from Sandrine Dudoit and Mark J. van der Laan.}
 
-\seealso{\code{\link{MTP}}, \code{\link{MTP-methods}}, \code{\link{[-methods}}, \code{\link{as.list-methods}}, \code{\link{print-methods}}, \code{\link{plot-methods}}, \code{\link{summary-methods}}}
+\seealso{ \code{\link{MTP}}, \code{\link{MTP-methods}},
+\code{\link{EBMTP}}, \code{\link{EBMTP-methods}},
+\code{\link{[-methods}}, \code{\link{as.list-methods}}, \code{\link{print-methods}}, \code{\link{plot-methods}}, \code{\link{summary-methods}}, \code{\link{mtp2ebmtp}}, 
+\code{\link{ebmtp2mtp}}}
 
 \examples{
 ## See MTP function: ? MTP
