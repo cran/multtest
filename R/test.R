@@ -41,6 +41,7 @@ MTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="t.
     }
     if(nrow(Y)!=n) stop("Outcome Y has length ",nrow(Y),", not equal to n=",n)
   }
+  if(test=="t.pair") n <- dx[2]/2
   #Z
   if(!is.null(Z)){
     Z<-as.matrix(Z)
@@ -290,8 +291,10 @@ MTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="t.
                          t.pair={
                            uY<-sort(unique(Y))
                            if(length(uY)!=2) stop("Must have two class labels for this test")
-                           if(trunc(n/2)!=n/2) stop("Must have an even number of samples for this test")
+                           if(trunc(ncol(X)/2)!=ncol(X)/2) stop("Must have an even number of samples for this test")
                            X<-X[,Y==uY[2]]-X[,Y==uY[1]]
+                           Y<-NULL
+                           n<-dim(X)[2]
                            meanX(psi0,na.rm,standardize,alternative,robust)
                          },
                          f={
@@ -440,8 +443,11 @@ MTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="t.
       colnames(index) <- c("Var1","Var2")
     }
     names(out$adjp)<-names(rawp)
+    estimates <- obs[3,]*obs[1,]
+    if(ftest) estimates <- vector("numeric",0)
+    if(test=="t.onesamp" | test=="t.pair") estimates <- obs[3,]*obs[1,]/sqrt(n)
     out<-new("MTP",statistic=(obs[3,]*obs[1,]/obs[2,]),
-      estimate=(if(ftest) vector("numeric",0) else obs[3,]*obs[1,]),
+      estimate=estimates,
       sampsize=n,rawp=rawp,adjp=out$adjp,conf.reg=out$cr,cutoff=out$c,reject=reject,
       rawdist=rawdistn,nulldist=nulldistn,nulldist.type=nulldist,
       marg.null=marg.null,marg.par=marg.par,label=label,index=index,

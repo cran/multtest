@@ -65,7 +65,7 @@ MTP(X, W = NULL, Y = NULL, Z = NULL, Z.incl = NULL, Z.test = NULL,
 }
 
 \details{
-A multiple testing procedure (MTP) is defined by choices of test statistics, type I error rate, null distribution and method for error rate control. Each component is described here. See references for more detail.
+A multiple testing procedure (MTP) is defined by choices of test statistics, type I error rate, null distribution and method for error rate control. Each component is described here. For two-sample t-tests, the group with the smaller-valued label is substracted from the group with the larger-valued label.  That is, differences in means are calculated as "mean of group 2 - mean of group 1" or "mean of group B - mean of group A". For paired t-tests, the arrangement of group indices does not matter, as long as the columns are arranged in the same corresponding order between groups. For example, if group 1 is coded as 0, and group 2 is coded as 1, for 3 pairs of data, it does not matter if the label \code{Y} is coded as "0,0,0,1,1,1", "1,1,1,0,0,0" "0,1,0,1,0,1" or "1,0,1,0,1,0", the paired differences between groups will be calculated as "group 2 - group 1". See references for more detail. 
 
 Test statistics are determined by the values of \code{test}: 
 \describe{

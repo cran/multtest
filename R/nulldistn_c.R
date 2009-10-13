@@ -8,7 +8,7 @@ boot.null <- function(X,label,stat.closure,W=NULL,B=1000,test,nulldist,theta0=0,
   n<-ncol(X)
   p<-nrow(X)
   if(!(is.vector(W) | is.matrix(W) | is.null(W))) stop("W must be a vector or a matrix")
-  if(is.null(W)) W<-matrix(1,nrow=p,ncol=n)
+  if(is.null(W))W<-matrix(1,nrow=p,ncol=n)
   if(is.vector(W)){
     if(length(W)==n) W<-matrix(W,nrow=p,ncol=n,byrow=TRUE)
     if(length(W)==p) W<-matrix(W,nrow=p,ncol=n)
@@ -38,7 +38,7 @@ boot.null <- function(X,label,stat.closure,W=NULL,B=1000,test,nulldist,theta0=0,
   dimnames(muboot)<-list(Xnames,paste(1:B))
 
   #fill in any nas by resampling some more 
-  nas<-is.na(muboot)
+  nas<-(is.na(muboot)|muboot=="Inf"|muboot=="-Inf")
   count<-0
   while(sum(nas)){
     count<-count+1
@@ -118,7 +118,7 @@ quant.trans <- function(muboot, marg.null, marg.par, ncp, alternative, perm.mat)
 boot.resample <- function (X, label, p, n, stat.closure, W, B, test){
     muboot <- matrix(0, nrow = p, ncol = B)
     if (any(test == c("t.twosamp.equalvar", "t.twosamp.unequalvar",
-        "t.pair", "f"))) {
+        "f"))) {
         label <- as.vector(label)
         uniqlabs <- unique(label)
         num.group <- length(uniqlabs)
@@ -179,7 +179,7 @@ boot.resample <- function (X, label, p, n, stat.closure, W, B, test){
             }
         }
         samp <- as.vector(t(matrix(unlist(samp), nrow = B, ncol = sum(obs))))
-    }
+      }
     else samp <- sample(n, n * B, replace = TRUE)
     cat("iteration = ")
     muboot <- .Call("bootloop", stat.closure, as.numeric(X),

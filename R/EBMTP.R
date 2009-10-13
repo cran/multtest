@@ -436,8 +436,11 @@ EBMTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="
       colnames(index) <- c("Var1","Var2")
     }
     names(adjp)<-names(rawp)
+    estimates <- obs[3,]*obs[1,]
+    if(ftest) estimates <- vector("numeric",0)
+    if(test=="t.onesamp" | test=="t.pair") estimates <- obs[3,]*obs[1,]/sqrt(n)
     out<-new("EBMTP",statistic=statistic,
-      estimate=(if(ftest) vector("numeric",0) else obs[3,]*obs[1,]),
+      estimate=estimates,
       sampsize=n,rawp=rawp,adjp=adjp,reject=EB.reject,
       rawdist=rawdistn,nulldist=nulldistn,nulldist.type=nulldist,
       marg.null=marg.null,marg.par=marg.par,
