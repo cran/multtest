@@ -272,11 +272,12 @@ int type2sample(char** options,SAMPLING_DATA* sd)
       sd->fn_delete=delete_sampling_pairt_fixed;
       sd->fn_first=first_sample_pairt_fixed;
       sd->fn_next=next_sample_pairt_fixed;
+    }else{
+	 sd->fn_create=create_sampling_pairt;
+	 sd->fn_delete=delete_sampling_pairt;
+	 sd->fn_first=first_sample_pairt;
+	 sd->fn_next=next_sample_pairt;
     }
-    sd->fn_create=create_sampling_pairt;
-    sd->fn_delete=delete_sampling_pairt;
-    sd->fn_first=first_sample_pairt;
-    sd->fn_next=next_sample_pairt;
     break;
   case mtBlockF:/*have not implemented the solutuion for storing the permutation yet, as it is very memory instensive*/
     sd->fn_create=create_sampling_block;

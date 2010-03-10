@@ -50,8 +50,8 @@ int next_sample_pairt_fixed(int* L)
       L[i]=1;
     else
       L[i]=0;       
-  l_b++;
   }
+  l_b++;
   return 1;
 }
 
