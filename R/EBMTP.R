@@ -77,6 +77,9 @@ EBMTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="
   #robust + see below with choice of nulldist
   if(test=="coxph.YvsXZ" & robust==TRUE)
     warning("No robust version of coxph.YvsXZ, proceeding with usual version")
+  #temp until fix
+  if((test=="t.onesamp" | test=="t.pair") & robust==TRUE)
+    stop("Robust test statistics currently not available for one-sample or two-sample paired test statistics.")
 
   #alternative
   ALTS<-c("two.sided","less","greater")

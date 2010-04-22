@@ -63,9 +63,9 @@ void create_sampling_block(int n,int*L,int B)
   
 void delete_sampling_block()
 {
-  free(l_L);
+  Free(l_L);
   l_L=NULL;
-  free(l_order_block);
+  Free(l_order_block);
 }
 int next_sample_block(int* L)
 {
