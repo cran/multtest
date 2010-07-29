@@ -360,7 +360,8 @@ MTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="t.
       clusterEvalQ(cluster, {library(Biobase); library(multtest)})
       if (is.null(dispatch)) dispatch=0.05
       }
-    } else if(inherits(cluster,c("MPIcluster", "PVMcluster", "SOCKcluster"))){
+    }
+    else if(inherits(cluster,c("MPIcluster", "PVMcluster", "SOCKcluster"))){
       clusterEvalQ(cluster, {library(Biobase); library(multtest)})
       if (is.null(dispatch)) dispatch=0.05
     }

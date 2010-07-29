@@ -11,6 +11,14 @@ importFrom(survival, coxph.control)
 importFrom(survival, coxph.fit)
 
 importFrom(MASS, mvrnorm)
+importFrom(MASS, rlm)
+
+#snow does not have a NAMESPACE
+#importFrom(snow, clusterApply)
+#importFrom(snow, LBclusterApply)
+#importFrom(snow, clusterEvalQ)
+#importFrom(snow, makeCluster)
+#importFrom(snow, stopCluster)
 
 exportClasses(MTP, EBMTP)
 

@@ -22,6 +22,7 @@ boot.null <- function(X,label,stat.closure,W=NULL,B=1000,test,nulldist,theta0=0,
     muboot <- boot.resample(X,label,p,n,stat.closure,W,B,test)
   }
   else {
+    autoload("snow")
     if(!is.null(seed)) clusterApply(cluster, seed, set.seed)
     else clusterApply(cluster, runif(length(cluster), max=10000000), set.seed)
     # Create vector of jobs to dispatch

@@ -290,7 +290,7 @@ EBMTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="
       else if (type=="MPI"){
          have_rmpi <- qRequire("Rmpi")
          if(!have_rmpi) stop("The package Rmpi is required for the specified type. Either Rmpi is not installed or it is not in the standard library location.")
-      }
+       }
       else if (type=="PVM"){
          have_rpvm <- qRequire("rpvm")
          if(!have_rpvm) stop("The package rpvm is required for the specified type. Either rpvm is not installed or it is not in the standard library location.")
@@ -299,7 +299,8 @@ EBMTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="
       clusterEvalQ(cluster, {library(Biobase); library(multtest)})
       if (is.null(dispatch)) dispatch=0.05
       }
-    } else if(inherits(cluster,c("MPIcluster", "PVMcluster", "SOCKcluster"))){
+    }
+    else if(inherits(cluster,c("MPIcluster", "PVMcluster", "SOCKcluster"))){
       clusterEvalQ(cluster, {library(Biobase); library(multtest)})
       if (is.null(dispatch)) dispatch=0.05
     }
@@ -337,11 +338,12 @@ EBMTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="
     ### Begin nuts and bolts of EB here.
 
     ### Set G function of type I error rates
-    error.closure <- switch(typeone, fwer=G.VS(V,S=NULL,tp=TRUE,bound=0),
-                                     gfwer=G.VS(V,S=NULL,tp=TRUE,bound=k),
-                                     tppfp=G.VS(V,S,tp=TRUE,bound=q),
-                                     fdr=G.VS(V,S,tp=FALSE,bound=NULL)
-                            )
+#MOVED BELOW SO V,S DEFINED
+#    error.closure <- switch(typeone, fwer=G.VS(V,S=NULL,tp=TRUE,bound=0),
+#                                     gfwer=G.VS(V,S=NULL,tp=TRUE,bound=k),
+#                                     tppfp=G.VS(V,S,tp=TRUE,bound=q),
+#                                     fdr=G.VS(V,S,tp=FALSE,bound=NULL)
+#                            )
 
     ### Generate guessed sets of true null hypotheses
     ### This function relates null and full densities.
@@ -381,7 +383,13 @@ EBMTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="
       Sn <- matrix(Sn, nr=clen, nc=B)
     }
 
-    G <-  error.closure(Vn,Sn)
+    ### Set G function of type I error rates
+    G <- switch(typeone, fwer=G.VS(Vn,Sn,tp=TRUE,bound=0),
+                         gfwer=G.VS(Vn,Sn,tp=TRUE,bound=k),
+                         tppfp=G.VS(Vn,Sn,tp=TRUE,bound=q),
+                         fdr=G.VS(Vn,Sn,tp=FALSE,bound=NULL)
+                )
+
     Gmeans <- rowSums(G,na.rm=TRUE)/B
 
     ### Now get adjps and rejection indicators.
@@ -461,17 +469,28 @@ EBMTP<-function(X,W=NULL,Y=NULL,Z=NULL,Z.incl=NULL,Z.test=NULL,na.rm=TRUE,test="
 ######################################################
 
 ### Function closure for different error rates.
+# CHANGE G.VS to function, not closure
+#G.VS <- function(V,S=NULL,tp=TRUE,bound){
+#  function(V,S){
+#    if(is.null(S)) g <- V     #FWER, GFWER
+#    else g <- V/(V+S)         #TPPFP, FDR
+#    if(tp==TRUE) {
+#      temp <- matrix(0,dim(g)[1],dim(g)[2])
+#      temp[g>bound] <- 1      #FWER, GFWER, TPPFP
+#      g <- temp
+#    }
+#    g
+#  }
+#}
 G.VS <- function(V,S=NULL,tp=TRUE,bound){
-  function(V,S){
-    if(is.null(S)) g <- V     #FWER, GFWER
-    else g <- V/(V+S)         #TPPFP, FDR
-    if(tp==TRUE) {
-      temp <- matrix(0,dim(g)[1],dim(g)[2])
-      temp[g>bound] <- 1      #FWER, GFWER, TPPFP
-      g <- temp
-    }
-    g
-  }
+   if(is.null(S)) g <- V     #FWER, GFWER
+   else g <- V/(V+S)         #TPPFP, FDR
+   if(tp==TRUE) {
+     temp <- matrix(0,dim(g)[1],dim(g)[2])
+     temp[g>bound] <- 1      #FWER, GFWER, TPPFP
+     g <- temp
+   }
+   g
 }
 
 ### Adaptive BH estimate of the number of true null hypotheses.
