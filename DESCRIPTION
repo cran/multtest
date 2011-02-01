@@ -1,6 +1,6 @@
 Package: multtest
 Title: Resampling-based multiple hypothesis testing
-Version: 2.6.0
+Version: 2.7.1
 Author: Katherine S. Pollard, Houston N. Gilbert, Yongchao Ge, Sandra
         Taylor, Sandrine Dudoit
 Description: Non-parametric bootstrap and permutation resampling-based
@@ -29,6 +29,6 @@ Suggests: snow
 License: LGPL
 biocViews: Microarray, DifferentialExpression, MultipleComparisons
 LazyLoad: yes
-Packaged: 2010-10-18 07:54:39 UTC; biocbuild
+Packaged: 2011-02-01 21:00:23 UTC; biocbuild
 Repository: CRAN
-Date/Publication: 2010-10-26 12:23:31
+Date/Publication: 2011-02-03 08:52:12

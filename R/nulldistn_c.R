@@ -22,7 +22,8 @@ boot.null <- function(X,label,stat.closure,W=NULL,B=1000,test,nulldist,theta0=0,
     muboot <- boot.resample(X,label,p,n,stat.closure,W,B,test)
   }
   else {
-    autoload("snow")
+    autoload("clusterApply","snow")
+    autoload("clusterApplyLB","snow")
     if(!is.null(seed)) clusterApply(cluster, seed, set.seed)
     else clusterApply(cluster, runif(length(cluster), max=10000000), set.seed)
     # Create vector of jobs to dispatch
@@ -115,7 +116,6 @@ quant.trans <- function(muboot, marg.null, marg.par, ncp, alternative, perm.mat)
   Z.quant
 }
 
-
 boot.resample <- function (X, label, p, n, stat.closure, W, B, test){
     muboot <- matrix(0, nrow = p, ncol = B)
     if (any(test == c("t.twosamp.equalvar", "t.twosamp.unequalvar",
@@ -158,8 +158,8 @@ boot.resample <- function (X, label, p, n, stat.closure, W, B, test){
             BlockNum[x])))
         groupIndex <- lapply(1:num.block, function(j) sapply(1:num.treat,
             function(i) which(label == utreat[i] & block == ublock[j])))
-        obs <- sapply(1:num.block, function(x) sapply(1:num.treat,
-            function(y) length(groupIndex[[x]][[y]])))
+         obs <- sapply(1:num.block, function(x) sapply(1:num.treat,
+            function(y) length(groupIndex[[x]][,y])))
         samp <- lapply(1:(num.treat * num.block), function(k) matrix(NA,
             nrow = B, ncol = obs[k]))
         for (k in 1:B) {
@@ -169,7 +169,7 @@ boot.resample <- function (X, label, p, n, stat.closure, W, B, test){
                   count <- 0
                   while (uniq.obs == 1) {
                     count <- count + 1
-                    samp[[(i - 1) * num.treat + j]][k, ] <- sample(groupIndex[[i]][[j]],
+                    samp[[(i - 1) * num.treat + j]][k, ] <- sample(groupIndex[[i]][,j],
                     obs[j, i], replace = TRUE)
                     uniq.obs <- length(unique(samp[[(i - 1) *
                       num.treat + j]][k, ]))
@@ -189,4 +189,6 @@ boot.resample <- function (X, label, p, n, stat.closure, W, B, test){
     cat("\n")
     muboot <- matrix(muboot, nrow = p, ncol = B)
 }
+
+
 
